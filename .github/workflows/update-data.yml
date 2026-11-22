@@ -30,7 +30,7 @@ jobs:
         run: |
           git config user.name "toptrack-bot"
           git config user.email "toptrack-bot@users.noreply.github.com"
-          git add git add toptrack-daten.js genres-cache.json
+          git add toptrack-daten.js genres-cache.json
           if git diff --cached --quiet; then
             echo "Keine Änderungen."
           else
