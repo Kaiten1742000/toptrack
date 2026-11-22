@@ -2,12 +2,13 @@
 // Läuft wöchentlich per GitHub Actions (siehe .github/workflows/update-data.yml)
 // Lokal: node scripts/build-data.mjs   (Node 18+)
 
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync } from "node:fs";
 
 const BASE = "https://kworb.net/spotify/";
 const CONCURRENCY = 6;
-const SONGS_PER_ARTIST = 20;
+const SONGS_PER_ARTIST = 15;
 const OUT = new URL("../toptrack-daten.js", import.meta.url);
+const GENRE_CACHE = new URL("../genres-cache.json", import.meta.url);
 
 /* ---------------- Hilfsfunktionen ---------------- */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -156,13 +157,75 @@ function refineWithSongs(a) {
   return lang;
 }
 
+/* ---------------- Genres über Deezer ---------------- */
+// Kategorien, die das Spiel als Filter anbietet
+const CATEGORY_RULES = [
+  ["schlager", /schlager|volksmusik/],
+  ["rap",      /rap|hip ?hop/],
+  ["latin",    /latin|reggaeton|salsa|mexic|brazil|brasil|sertanejo|bachata|cumbia/],
+  ["asian",    /asian|asiat|k-?pop|j-?pop/],
+  ["electro",  /dance|electro|techno|house|edm|disco/],
+  ["rnb",      /r&b|rnb|soul|funk/],
+  ["rock",     /rock|metal|punk/],
+  ["alt",      /alternative|indie/],
+  ["pop",      /pop/],
+];
+const IGNORE_GENRE = /deutsch|german|french|franz|ital|turk|türk/;
+function categoriesFromGenres(names) {
+  const cats = new Set();
+  for (const raw of names) {
+    const n = raw.toLowerCase();
+    const rule = CATEGORY_RULES.find(([, re]) => re.test(n));
+    if (rule) cats.add(rule[0]);
+    else if (!IGNORE_GENRE.test(n)) cats.add("other");
+  }
+  return [...cats];
+}
+
+let lastCall = 0;
+async function dz(path) {
+  for (let t = 0; t < 6; t++) {
+    const wait = lastCall + 130 - Date.now(); lastCall = Math.max(Date.now(), lastCall + 130);
+    if (wait > 0) await sleep(wait);
+    try {
+      const r = await fetch("https://api.deezer.com/" + path, { headers: { "Accept-Language": "en" } });
+      const j = await r.json();
+      if (j.error) { if (j.error.code === 4) { await sleep(5000); continue; } return null; }
+      return j;
+    } catch (e) { await sleep(2000 * (t + 1)); }
+  }
+  return null;
+}
+const nn = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, "");
+const albumGenres = new Map();
+async function lookupGenres(artistName, songs) {
+  for (const [title] of songs.slice(0, 3)) {
+    const clean = title.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, "").replace(/\s+-\s+.*$/, "");
+    const d = await dz("search?limit=10&q=" + encodeURIComponent(artistName + " " + clean));
+    const a = nn(artistName);
+    const tr = (d?.data || []).find(x => { const b = nn(x.artist?.name); return b && (a === b || a.includes(b) || b.includes(a)); });
+    if (!tr?.album?.id) continue;
+    if (!albumGenres.has(tr.album.id)) {
+      const al = await dz("album/" + tr.album.id);
+      albumGenres.set(tr.album.id, (al?.genres?.data || []).map(g => g.name));
+    }
+    const g = albumGenres.get(tr.album.id);
+    if (g.length) return g;
+  }
+  return [];
+}
+
 /* ---------------- Ablauf ---------------- */
 async function main() {
   const t0 = Date.now();
   const artists = {};
-  for (const p of ["listeners.html", "listeners2.html", "listeners3.html"]) {
-    const html = await get(p); if (!html) throw new Error("Konnte " + p + " nicht laden");
-    for (const a of parseListeners(html)) artists[a.id] = { ...a, sh: {}, titles: new Set() };
+  // alle Hörer-Listen lesen (listeners.html, listeners2.html, … bis keine mehr kommt)
+  for (let p = 1; p <= 30; p++) {
+    const html = await get(p === 1 ? "listeners.html" : `listeners${p}.html`);
+    if (!html) { if (p === 1) throw new Error("Konnte listeners.html nicht laden"); break; }
+    const list = parseListeners(html);
+    if (!list.length) break;
+    for (const a of list) artists[a.id] = { ...a, sh: {}, titles: new Set() };
   }
   console.log("Künstler (monatliche Hörer):", Object.keys(artists).length);
   if (Object.keys(artists).length < 5000) throw new Error("Zu wenige Künstler – hat sich kworb geändert?");
@@ -213,10 +276,32 @@ async function main() {
   out.sort((x, y) => y[2] - x[2]);
   if (out.length < 2000) throw new Error("Nur " + out.length + " Künstler – Datei wird nicht überschrieben");
 
-  const data = { generated: new Date().toISOString().slice(0, 10), source: "kworb.net (Spotify)", artists: out };
+  // Genres: aus dem Cache, nur neue Künstler (oder alte Fehlschläge nach 4 Wochen) bei Deezer nachschlagen
+  const cache = existsSync(GENRE_CACHE) ? JSON.parse(readFileSync(GENRE_CACHE, "utf8")) : {};
+  const today = new Date().toISOString().slice(0, 10);
+  const stale = e => !e || (!e.g.length && (Date.parse(today) - Date.parse(e.t)) > 28 * 864e5);
+  const todo = out.filter(a => stale(cache[a[1]]));
+  console.log("Genres: im Cache", out.length - todo.length, "· neu nachschlagen", todo.length);
+  let gi = 0, gdone = 0;
+  const genreDeadline = t0 + 140 * 60 * 1000;        // spätestens nach 140 min aufhören, Rest beim nächsten Lauf
+  async function gworker() {
+    while (gi < todo.length && Date.now() < genreDeadline) {
+      const a = todo[gi++];
+      cache[a[1]] = { g: await lookupGenres(a[0], a[4]), t: today };
+      if (++gdone % 500 === 0) { console.log("Genres:", gdone, "/", todo.length); writeFileSync(GENRE_CACHE, JSON.stringify(cache)); }
+    }
+  }
+  await Promise.all(Array.from({ length: 4 }, gworker));
+  writeFileSync(GENRE_CACHE, JSON.stringify(cache));
+
+  for (const a of out) a.push(categoriesFromGenres(cache[a[1]]?.g || []).join(","));
+
+  const data = { generated: today, source: "kworb.net (Spotify), Genres: Deezer", artists: out };
   writeFileSync(OUT, "window.TOPTRACK_DATA=" + JSON.stringify(data) + ";\n");
-  const cnt = {}; for (const a of out) cnt[a[3]] = (cnt[a[3]] || 0) + 1;
-  console.log("Fertig:", out.length, "Künstler", JSON.stringify(cnt), "in", Math.round((Date.now() - t0) / 1000), "s");
+  const cnt = {}, ccnt = {};
+  for (const a of out) { cnt[a[3]] = (cnt[a[3]] || 0) + 1; for (const c of (a[5] || "none").split(",")) ccnt[c || "none"] = (ccnt[c || "none"] || 0) + 1; }
+  console.log("Fertig:", out.length, "Künstler", JSON.stringify(cnt));
+  console.log("Kategorien:", JSON.stringify(ccnt), "· Dauer", Math.round((Date.now() - t0) / 1000), "s");
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
