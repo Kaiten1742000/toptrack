@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOP TRACK – Errate den größten Hit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#14171c; --panel2:#1b1f26; --line:#272c35;
+    --text:#eef1f5; --muted:#8a93a3; --accent:#1ed760; --accent2:#7c5cff;
+    --bad:#ff4d6d; --warn:#ffb547; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}
+  body{min-height:100vh;background:
+    radial-gradient(900px 500px at 10% -10%, rgba(124,92,255,.18), transparent 60%),
+    radial-gradient(800px 500px at 110% 10%, rgba(30,215,96,.12), transparent 60%), var(--bg)}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
+  .logo{font-family:"Space Grotesk";font-weight:700;font-size:26px;letter-spacing:-.5px}
+  .logo span{color:var(--accent)}
+  .hud{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--muted)}
+  .chip b{color:var(--text);font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+  h1,h2,h3{font-family:"Space Grotesk";margin:0}
+  h1{font-size:40px;line-height:1.05;letter-spacing:-1px}
+  .sub{color:var(--muted);margin:10px 0 0;line-height:1.5}
+  label.l{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 0 10px;font-weight:600}
+  input[type=text],input[type=password]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:12px;padding:12px 14px;font:inherit;outline:none}
+  input:focus{border-color:var(--accent2)}
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:9px 15px;
+    font:inherit;font-size:14px;cursor:pointer;transition:.15s}
+  .pill:hover{border-color:#3a4150}
+  .pill.on{background:rgba(30,215,96,.14);border-color:var(--accent);color:#bfffd6}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .hint a{color:#b9a8ff}
+  .btn{background:var(--accent);color:#04120a;border:0;border-radius:999px;padding:14px 26px;font:600 15px Inter;cursor:pointer;transition:.15s}
+  .btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .err{color:var(--bad);font-size:14px;margin-top:14px;min-height:18px}
+  .hidden{display:none!important}
+
+  /* Round */
+  .artist{display:flex;align-items:center;gap:18px;margin-bottom:22px}
+  .avatar{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font:700 30px "Space Grotesk";flex:none;
+    box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .artist .meta{color:var(--muted);font-size:14px;margin-top:6px}
+  .artist h2{font-size:32px;letter-spacing:-.5px}
+  .q{font-size:15px;color:var(--muted);margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media (max-width:640px){.grid{grid-template-columns:1fr} h1{font-size:32px}}
+  .opt{position:relative;display:flex;align-items:stretch;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:14px;
+    transition:.15s;overflow:hidden;min-height:68px}
+  .opt:hover:not(.done){border-color:var(--accent2);transform:translateY(-1px)}
+  .opt .choose{flex:1;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:14px 16px 14px 6px;cursor:pointer;position:relative;z-index:1}
+  .opt.done .choose{cursor:default}
+  .opt .play{flex:none;width:54px;background:none;border:0;color:var(--text);cursor:pointer;position:relative;z-index:2;display:grid;place-items:center}
+  .opt .play span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:13px;transition:.15s}
+  .opt .play:hover span{background:var(--accent);color:#04120a}
+  .opt .play.playing span{background:var(--accent);color:#04120a}
+  .opt .play.loading span{animation:pulse 1s ease infinite}
+  .opt .play:disabled{cursor:not-allowed;opacity:.35}
+  @keyframes pulse{50%{opacity:.4}}
+  .opt .prog{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);width:0;z-index:3}
+  .opt .t{font-weight:600;position:relative;z-index:1;padding-right:64px;word-break:break-word}
+  .vol{display:flex;align-items:center;gap:8px}
+  .vol input{width:90px;accent-color:var(--accent)}
+  .avatar{background-size:cover!important;background-position:center!important}
+  .opt .pc{position:absolute;right:14px;top:50%;transform:translateY(-50%);font:600 13px "Space Grotesk";color:var(--muted);z-index:1}
+  .opt .rank{font-size:12px;color:var(--muted);position:relative;z-index:1;margin-top:4px}
+  .opt .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(124,92,255,.14);width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+  .opt.correct{border-color:var(--accent);background:rgba(30,215,96,.08)}
+  .opt.correct .bar{background:rgba(30,215,96,.22)}
+  .opt.wrong{border-color:var(--bad)}
+  .opt.wrong .bar{background:rgba(255,77,109,.2)}
+  .opt .sp{position:relative;z-index:1;font-size:12px;color:#9fe8bb;text-decoration:none;display:inline-block;margin-top:6px}
+  .opt .sp:hover{text-decoration:underline}
+  .verdict{margin:18px 0 6px;font:700 22px "Space Grotesk"}
+  .verdict.good{color:var(--accent)} .verdict.mid{color:var(--warn)} .verdict.bad{color:var(--bad)}
+  .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+  .loader{display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 0;color:var(--muted)}
+  .spin{width:38px;height:38px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 0.8s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .summary{display:grid;gap:8px;margin-top:18px}
+  .sumrow{display:flex;justify-content:space-between;gap:12px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:14px}
+  .sumrow .ok{color:var(--accent)} .sumrow .no{color:var(--bad)} .sumrow .mid{color:var(--warn)}
+  .big{font:700 64px "Space Grotesk";letter-spacing:-2px}
+  .pop{animation:pop .35s ease}
+  @keyframes pop{0%{transform:scale(.97);opacity:.4}100%{transform:scale(1);opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">TOP<span>TRACK</span></div>
+    <div class="hud hidden" id="hud">
+      <div class="chip">Runde <b id="hRound">1</b>/<b id="hTotal">10</b></div>
+      <div class="chip">Punkte <b id="hScore">0</b></div>
+      <div class="chip">Streak <b id="hStreak">0</b>🔥</div>
+      <div class="chip vol" title="Lautstärke">🔊 <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></div>
+    </div>
+  </header>
+
+  <!-- SETUP -->
+  <section id="setup" class="card pop">
+    <h1>Welcher Song ist der größte Hit?</h1>
+    <p class="sub">Ein zufälliger Künstler, 8 seiner Songs. Du tippst auf den meistgestreamten. Danach siehst du, ob du richtig lagst und wie viele Spotify-Streams jeder Song hat.</p>
+
+    <div id="dataMissing" class="hidden" style="margin-top:20px;padding:16px;border:1px solid var(--warn);border-radius:12px;background:rgba(255,181,71,.07)">
+      <b>Spotify-Daten fehlen.</b>
+      <div class="hint" style="margin-top:6px">Die Datei <b>toptrack-daten.js</b> wurde noch nicht erstellt. Starte im GitHub-Repository unter <b>Actions → Spotify-Daten aktualisieren → Run workflow</b> den ersten Lauf (dauert ca. 10–15 Minuten). Alternativ kannst du eine vorhandene Datei hier auswählen:</div>
+      <input type="file" id="dataFile" accept=".js,.json" style="margin-top:10px;color:var(--muted)">
+    </div>
+
+    <div id="setupBody">
+      <label class="l">Sprache der Künstler (mehrere möglich)</label>
+      <div class="pills" id="langPills"></div>
+
+      <label class="l">Mindestens so viele monatliche Spotify-Hörer</label>
+      <div class="pills" id="minPills"></div>
+      <div class="hint" id="poolInfo"></div>
+
+      <label class="l">Schwierigkeit</label>
+      <div class="pills" id="diffPills"></div>
+
+      <label class="l">Runden</label>
+      <div class="pills" id="roundPills"></div>
+
+      <label class="l">Player</label>
+      <div class="pills" id="playerPills"></div>
+      <div class="hint">Hörproben: 30 Sekunden direkt in der Karte. Spotify: der echte Spotify-Player unter den Songs. Bist du im Browser bei Spotify eingeloggt, laufen die Songs dort komplett.</div>
+
+      <div class="row" style="margin-top:24px">
+        <button class="btn" id="startBtn">Spiel starten</button>
+      </div>
+    </div>
+    <div class="err" id="setupErr"></div>
+    <div class="hint" id="dataInfo" style="margin-top:14px"></div>
+  </section>
+
+  <!-- ROUND -->
+  <section id="round" class="card hidden">
+    <div class="artist">
+      <div class="avatar" id="avatar">A</div>
+      <div>
+        <h2 id="artistName">Artist</h2>
+        <div class="meta" id="artistMeta"></div>
+      </div>
+    </div>
+    <div class="q">Welcher dieser Songs hat die meisten Streams auf Spotify? Mit ▶ hörst du rein.</div>
+    <div class="grid" id="options"></div>
+    <div id="spotifyBox" class="hidden" style="margin-top:14px"></div>
+    <div id="result" class="hidden">
+      <div class="verdict" id="verdict"></div>
+      <div class="hint" id="verdictSub"></div>
+    </div>
+    <div class="foot">
+      <button class="btn ghost" id="quitBtn">Beenden</button>
+      <button class="btn hidden" id="nextBtn">Nächster Künstler →</button>
+    </div>
+  </section>
+
+  <!-- END -->
+  <section id="end" class="card hidden">
+    <div class="hint" style="text-transform:uppercase;letter-spacing:.08em">Endstand</div>
+    <div class="big" id="endScore">0</div>
+    <p class="sub" id="endSub"></p>
+    <div class="summary" id="summary"></div>
+    <div class="row" style="margin-top:22px">
+      <button class="btn" id="againBtn">Nochmal mit gleichen Einstellungen</button>
+      <button class="btn ghost" id="settingsBtn">Einstellungen</button>
+    </div>
+  </section>
+</div>
+
+<script src="toptrack-daten.js"></script>
+<script>
+/* ---------- Config ---------- */
+const LANGS = {de:"Deutsch", en:"Englisch", es:"Spanisch", fr:"Französisch", it:"Italienisch", tr:"Türkisch", pt:"Portugiesisch", ko:"Koreanisch", ja:"Japanisch"};
+const MINS = [2000000, 5000000, 10000000, 20000000, 40000000];
+const DIFFS = {
+  easy:{label:"Leicht", pool:20, desc:"Hit + 7 Songs aus den Top 20"},
+  mid: {label:"Mittel", pool:12, desc:"Hit + 7 Songs aus den Top 12"},
+  hard:{label:"Schwer", pool:8,  desc:"Genau die Top 8"},
+};
+const ROUNDS = [5,10,15];
+const PLAYERS = {preview:"Hörproben (30 s)", spotify:"Spotify-Player"};
+
+/* ---------- State ---------- */
+const $ = id => document.getElementById(id);
+function load(){ try{ return JSON.parse(localStorage.getItem("toptrack.v3")); }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem("toptrack.v3", JSON.stringify(S)); }catch(e){} }
+let S = Object.assign({langs:["de"], min:2000000, diff:"mid", rounds:10, player:"preview"}, load()||{});
+let DATA = null, game = null;
+
+const fmt = n => Number(n).toLocaleString("de-DE");
+const short = n => n>=1e9 ? (n/1e9).toLocaleString("de-DE",{maximumFractionDigits:2})+" Mrd." :
+                   n>=1e6 ? (n/1e6).toLocaleString("de-DE",{maximumFractionDigits:1})+" Mio." :
+                   n>=1e3 ? Math.round(n/1e3).toLocaleString("de-DE")+" Tsd." : String(n);
+const rnd = n => Math.floor(Math.random()*n);
+const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; };
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- Daten laden ---------- */
+const IDB = {
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open("toptrack",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async get(k){ const db=await this.open(); return new Promise((res,rej)=>{ const q=db.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); },
+  async set(k,v){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+};
+function parseDataText(txt){
+  const i=txt.indexOf("{"), j=txt.lastIndexOf("}");
+  const d=JSON.parse(txt.slice(i,j+1));
+  if(!d.artists||!d.artists.length) throw new Error("Keine Künstler in der Datei");
+  return d;
+}
+async function initData(){
+  let d = window.TOPTRACK_DATA || null;
+  try{
+    const stored = await IDB.get("data");
+    if(!d && stored) d = stored;
+    else if(d && (!stored || stored.generated < d.generated)) IDB.set("data", d).catch(()=>{});
+  }catch(e){}
+  if(d) useData(d); else { $("dataMissing").classList.remove("hidden"); $("setupBody").classList.add("hidden"); }
+}
+function useData(d){
+  DATA = d.artists.map(([name,id,listeners,lang,songs])=>({name,id,listeners,lang,songs:songs.map(([t,tid,s])=>({name:t,id:tid,streams:s}))}));
+  $("dataMissing").classList.add("hidden"); $("setupBody").classList.remove("hidden");
+  $("dataInfo").textContent = `Spotify-Daten vom ${new Date(d.generated).toLocaleDateString("de-DE")} · ${fmt(DATA.length)} Künstler · Quelle: kworb.net · aktualisiert sich jeden Montag automatisch`;
+  renderSetup();
+}
+$("dataFile").addEventListener("change", async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ const d=parseDataText(await f.text()); useData(d); IDB.set("data", d).catch(()=>{}); $("setupErr").textContent=""; }
+  catch(err){ $("setupErr").textContent="Die Datei konnte nicht gelesen werden: "+err.message; }
+});
+
+/* ---------- Setup UI ---------- */
+function pool(){ return DATA ? DATA.filter(a=>S.langs.includes(a.lang) && a.listeners>=S.min) : []; }
+function pills(el, items, isOn, onClick){
+  el.innerHTML = "";
+  items.forEach(([val,label,title])=>{
+    const b=document.createElement("button");
+    b.className="pill"+(isOn(val)?" on":""); b.textContent=label; if(title) b.title=title;
+    b.onclick=()=>{ onClick(val); renderSetup(); save(); };
+    el.appendChild(b);
+  });
+}
+function renderSetup(){
+  const count = l => DATA ? DATA.filter(a=>a.lang===l && a.listeners>=S.min).length : 0;
+  pills($("langPills"), Object.entries(LANGS).map(([k,v])=>[k, `${v} (${count(k)})`]), v=>S.langs.includes(v),
+    v=>{ S.langs = S.langs.includes(v) ? S.langs.filter(x=>x!==v) : [...S.langs,v]; });
+  pills($("minPills"), MINS.map(m=>[m, short(m)]), v=>S.min===v, v=>S.min=v);
+  pills($("diffPills"), Object.entries(DIFFS).map(([k,v])=>[k,v.label,v.desc]), v=>S.diff===v, v=>S.diff=v);
+  pills($("roundPills"), ROUNDS.map(r=>[r,r+" Runden"]), v=>S.rounds===v, v=>S.rounds=v);
+  pills($("playerPills"), Object.entries(PLAYERS), v=>S.player===v, v=>S.player=v);
+  const n=pool().length;
+  $("poolInfo").textContent = n ? `${n} Künstler passen zu deiner Auswahl.` : "Mit dieser Auswahl gibt es keine Künstler. Senke die Hörer-Grenze oder wähle mehr Sprachen.";
+  $("startBtn").disabled = n===0;
+}
+
+function show(id){ ["setup","round","end"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); $("hud").classList.toggle("hidden", id==="setup"); }
+
+/* ---------- Hörproben (Deezer, Fallback iTunes) ---------- */
+const normTitle = s => s.toLowerCase()
+  .replace(/\s*[\(\[][^\)\]]*[\)\]]/g,"").replace(/\s+-\s+.*$/,"").replace(/\s+(feat\.?|ft\.?|featuring)\s+.*$/,"")
+  .replace(/[^\p{L}\p{N}]+/gu,"").trim();
+function jsonp(url, ms=8000){
+  return new Promise((res,rej)=>{
+    const cb="__jp"+Math.random().toString(36).slice(2);
+    const s=document.createElement("script");
+    const done=()=>{ delete window[cb]; s.remove(); };
+    const t=setTimeout(()=>{ done(); rej(new Error("timeout")); }, ms);
+    window[cb]=d=>{ clearTimeout(t); done(); res(d); };
+    s.onerror=()=>{ clearTimeout(t); done(); rej(new Error("load")); };
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
+    document.head.appendChild(s);
+  });
+}
+const normName = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\p{L}\p{N}]+/gu,"");
+const artistMatch = (a,b) => { a=normName(a); b=normName(b); return !!a && !!b && (a===b || a.includes(b) || b.includes(a)); };
+const titleMatch = (a,b) => { a=normTitle(a); b=normTitle(b); return !!a && !!b && (a===b || a.startsWith(b) || b.startsWith(a)); };
+const previewCache = {};
+function findPreview(artist, title){
+  const k = artist+"|"+title;
+  if(!previewCache[k]) previewCache[k] = (async()=>{
+    const clean = title.replace(/\s*[\(\[][^\)\]]*[\)\]]/g,"").replace(/\s+-\s+.*$/,"");
+    try{
+      const d = await jsonp("https://api.deezer.com/search?output=jsonp&q="+encodeURIComponent(artist+" "+clean));
+      const list = (d.data||[]).filter(x=>x.preview && artistMatch(x.artist?.name, artist));
+      const hit = list.find(x=>titleMatch(x.title, title) || titleMatch(x.title_short, title));
+      if(hit) return {url:hit.preview};
+    }catch(e){}
+    try{
+      const d = await jsonp("https://itunes.apple.com/search?entity=song&limit=25&term="+encodeURIComponent(artist+" "+clean));
+      const list = (d.results||[]).filter(x=>x.previewUrl && artistMatch(x.artistName, artist));
+      const hit = list.find(x=>titleMatch(x.trackName, title));
+      if(hit) return {url:hit.previewUrl};
+    }catch(e){}
+    return null;
+  })();
+  return previewCache[k];
+}
+const pictureCache = {};
+function findPicture(artist){
+  if(!pictureCache[artist]) pictureCache[artist] = jsonp("https://api.deezer.com/search/artist?output=jsonp&q="+encodeURIComponent(artist))
+    .then(d=>{ const l=d.data||[]; const a=l.find(x=>normName(x.name)===normName(artist)) || l.find(x=>artistMatch(x.name,artist));
+      return a && a.picture_medium && !/\/artist\/\/|images\/artist\/?$/.test(a.picture_medium) ? a.picture_medium : null; })
+    .catch(()=>null);
+  return pictureCache[artist];
+}
+
+/* ---------- Player: Hörproben ---------- */
+const audio = new Audio(); audio.preload="auto";
+let playingBtn = null;
+try{ audio.volume = +(localStorage.getItem("toptrack.vol") ?? 0.7); }catch(e){ audio.volume=0.7; }
+$("vol").value = audio.volume;
+$("vol").addEventListener("input", e=>{ audio.volume=+e.target.value; try{ localStorage.setItem("toptrack.vol", audio.volume); }catch(_){} });
+function markBtn(btn, on){
+  if(!btn) return;
+  btn.classList.toggle("playing", on); btn.querySelector("span").textContent = on ? "❚❚" : "▶";
+  if(!on){ const p=btn.parentElement?.querySelector(".prog"); if(p) p.style.width="0"; }
+}
+function stopAudio(){
+  audio.pause(); markBtn(playingBtn,false); playingBtn=null;
+  if(spCtrl){ try{ spCtrl.pause(); }catch(e){} }
+}
+audio.addEventListener("timeupdate", ()=>{
+  if(!playingBtn || !audio.duration || S.player!=="preview") return;
+  const p=playingBtn.parentElement.querySelector(".prog"); if(p) p.style.width=(audio.currentTime/audio.duration*100)+"%";
+});
+audio.addEventListener("ended", ()=>{ markBtn(playingBtn,false); playingBtn=null; });
+
+/* ---------- Player: Spotify-Embed ---------- */
+let spApi = null, spCtrl = null, spApiLoading = null;
+function loadSpotifyApi(){
+  if(spApi) return Promise.resolve(spApi);
+  if(!spApiLoading) spApiLoading = new Promise(res=>{
+    window.onSpotifyIframeApiReady = api => { spApi = api; res(api); };
+    const s=document.createElement("script"); s.src="https://open.spotify.com/embed/iframe-api/v1"; s.async=true;
+    s.onerror=()=>res(null); document.head.appendChild(s);
+    setTimeout(()=>res(spApi), 6000);
+  });
+  return spApiLoading;
+}
+async function spotifyPlay(trackId){
+  const box=$("spotifyBox"); box.classList.remove("hidden");
+  const uri="spotify:track:"+trackId;
+  const api = await loadSpotifyApi();
+  if(api){
+    if(!spCtrl){
+      box.innerHTML='<div id="spEmbed"></div>';
+      await new Promise(res=>api.createController($("spEmbed"), {uri, width:"100%", height:152}, c=>{ spCtrl=c; res(); }));
+      try{ spCtrl.play(); }catch(e){}
+    } else { spCtrl.loadUri(uri); try{ spCtrl.play(); }catch(e){} }
+  } else {
+    // Fallback ohne API: einfaches Embed, Start per Klick im Player
+    box.innerHTML = `<iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${trackId}" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+  }
+}
+
+async function onPlay(btn, artist, song){
+  if(S.player==="spotify"){
+    if(playingBtn===btn){ stopAudio(); return; }
+    markBtn(playingBtn,false); playingBtn=btn; markBtn(btn,true);
+    spotifyPlay(song.id);
+    return;
+  }
+  if(playingBtn===btn){ stopAudio(); return; }
+  stopAudio();
+  btn.classList.add("loading");
+  const p = await findPreview(artist, song.name);
+  btn.classList.remove("loading");
+  if(!p){ btn.disabled=true; btn.title="Keine Hörprobe gefunden"; btn.querySelector("span").textContent="–"; return; }
+  if(playingBtn) stopAudio();
+  audio.src = p.url;
+  try{ await audio.play(); }catch(e){ return; }
+  playingBtn = btn; markBtn(btn,true);
+}
+
+/* ---------- Runden bauen ---------- */
+function buildRound(){
+  const candidates = pool().filter(a=>!game.used.has(a.id));
+  if(!candidates.length) return null;
+  const a = candidates[rnd(candidates.length)];
+  game.used.add(a.id);
+  const songs = a.songs;                       // bereits nach Streams sortiert
+  const top = songs[0];
+  const range = songs.slice(1, Math.max(8, Math.min(DIFFS[S.diff].pool, songs.length)));
+  const rest = shuffle(range).slice(0,7);
+  const options = shuffle([top, ...rest]);
+  const ranked = [...options].sort((x,y)=>y.streams-x.streams);
+  return {artist:a.name, artistId:a.id, listeners:a.listeners, lang:a.lang, options, ranked};
+}
+
+/* ---------- Spielablauf ---------- */
+function startGame(){
+  $("setupErr").textContent="";
+  if(!DATA){ $("setupErr").textContent="Es sind noch keine Spotify-Daten geladen."; return; }
+  if(!S.langs.length){ $("setupErr").textContent="Wähle mindestens eine Sprache."; return; }
+  const n=pool().length;
+  if(!n){ $("setupErr").textContent="Mit dieser Auswahl gibt es keine Künstler."; return; }
+  game = {round:0, total:Math.min(S.rounds, n), score:0, streak:0, best:0, used:new Set(), history:[]};
+  $("hTotal").textContent = game.total;
+  nextRound();
+}
+function nextRound(){
+  stopAudio();
+  game.round++;
+  if(game.round > game.total) return endGame();
+  const r = buildRound();
+  if(!r) return endGame();
+  game.current = r;
+  updateHud();
+  renderRound(r);
+}
+
+function avatarStyle(name){
+  let h=0; for(const ch of name) h=(h*31+ch.codePointAt(0))>>>0;
+  const a=h%360, b=(a+60)%360;
+  return `background:linear-gradient(135deg,hsl(${a} 70% 55%),hsl(${b} 70% 40%));`;
+}
+
+function renderRound(r){
+  show("round");
+  $("round").classList.remove("pop"); void $("round").offsetWidth; $("round").classList.add("pop");
+  const av=$("avatar"); av.setAttribute("style", avatarStyle(r.artist));
+  av.textContent = [...r.artist.replace(/^the\s+/i,"")][0]?.toUpperCase() || "?";
+  findPicture(r.artist).then(url=>{
+    if(!url || game?.current!==r) return;
+    const img=new Image(); img.onload=()=>{ if(game?.current!==r) return; av.style.background=`url("${url}")`; av.textContent=""; }; img.src=url;
+  });
+  $("artistName").textContent = r.artist;
+  $("artistMeta").innerHTML = `${esc(short(r.listeners))} monatliche Hörer · ${esc(LANGS[r.lang])} · <a href="https://open.spotify.com/artist/${r.artistId}" target="_blank" rel="noopener" style="color:#9fe8bb">Spotify-Profil ↗</a>`;
+  $("result").classList.add("hidden"); $("nextBtn").classList.add("hidden");
+  $("spotifyBox").classList.toggle("hidden", !(S.player==="spotify" && spCtrl));
+  const box=$("options"); box.innerHTML="";
+  r.options.forEach((t,i)=>{
+    const o=document.createElement("div"); o.className="opt"; o.dataset.i=i;
+    o.innerHTML = `<div class="bar"></div><div class="prog"></div>
+      <button class="play" title="Reinhören"><span>▶</span></button>
+      <button class="choose"><div class="t">${esc(t.name)}</div></button>`;
+    o.querySelector(".play").onclick=e=>onPlay(e.currentTarget, r.artist, t);
+    o.querySelector(".choose").onclick=()=>pick(i);
+    box.appendChild(o);
+    if(S.player==="preview") findPreview(r.artist, t.name);   // im Hintergrund vorladen
+  });
+}
+
+function pick(i){
+  const r=game.current, chosen=r.options[i];
+  if(r.picked) return;
+  r.picked = true;
+  const rank = r.ranked.indexOf(chosen)+1;
+  const pts = rank===1 ? 100 + game.streak*20 : rank===2 ? 40 : rank===3 ? 20 : 0;
+  game.streak = rank===1 ? game.streak+1 : 0;
+  game.best = Math.max(game.best, game.streak);
+  game.score += pts;
+  game.history.push({artist:r.artist, pick:chosen.name, top:r.ranked[0].name, topStreams:r.ranked[0].streams, rank, pts});
+
+  const max = r.ranked[0].streams;
+  [...$("options").children].forEach((o,j)=>{
+    const t=r.options[j], tr=r.ranked.indexOf(t)+1;
+    o.classList.add("done");
+    if(tr===1) o.classList.add("correct");
+    if(j===i && tr!==1) o.classList.add("wrong");
+    const c=document.createElement("div"); c.className="choose";
+    o.querySelector(".choose").replaceWith(c);
+    c.innerHTML = `<div class="t">${esc(t.name)}</div>
+      <div class="rank">Platz ${tr} · ${fmt(t.streams)} Streams</div>
+      <a class="sp" href="https://open.spotify.com/track/${t.id}" target="_blank" rel="noopener">Auf Spotify öffnen ↗</a>
+      <div class="pc">${short(t.streams)}</div>`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ o.querySelector(".bar").style.width=(t.streams/max*100)+"%"; }));
+  });
+  const box=$("options"); [...box.children].sort((a,b)=> r.ranked.indexOf(r.options[a.dataset.i]) - r.ranked.indexOf(r.options[b.dataset.i])).forEach(n=>box.appendChild(n));
+
+  const v=$("verdict");
+  if(rank===1){ v.className="verdict good"; v.textContent = `Richtig! +${pts} Punkte`+(game.streak>1?` · ${game.streak}er-Streak 🔥`:""); }
+  else if(rank<=3){ v.className="verdict mid"; v.textContent = `Knapp daneben: Platz ${rank}. +${pts} Punkte`; }
+  else { v.className="verdict bad"; v.textContent = `Leider falsch, dein Song ist auf Platz ${rank}.`; }
+  $("verdictSub").textContent = `Der größte Hit ist „${r.ranked[0].name}“ mit ${fmt(r.ranked[0].streams)} Streams auf Spotify.`;
+  $("result").classList.remove("hidden");
+  $("nextBtn").textContent = game.round>=game.total ? "Ergebnis ansehen →" : "Nächster Künstler →";
+  $("nextBtn").classList.remove("hidden");
+  updateHud();
+}
+
+function updateHud(){
+  $("hRound").textContent=Math.min(game.round,game.total); $("hScore").textContent=game.score; $("hStreak").textContent=game.streak;
+}
+
+function endGame(){
+  stopAudio();
+  show("end");
+  const hits = game.history.filter(h=>h.rank===1).length;
+  $("endScore").textContent = game.score;
+  $("endSub").textContent = `${hits} von ${game.history.length} Hits richtig erkannt · längste Serie: ${game.best}`;
+  $("summary").innerHTML = game.history.map(h=>`
+    <div class="sumrow"><span><b>${esc(h.artist)}</b> · ${esc(h.top)} <span style="color:var(--muted)">(${short(h.topStreams)})</span></span>
+    <span class="${h.rank===1?"ok":h.rank<=3?"mid":"no"}">${h.rank===1?"✓ richtig":"Platz "+h.rank}</span></div>`).join("");
+}
+
+$("startBtn").onclick=startGame;
+$("nextBtn").onclick=nextRound;
+$("quitBtn").onclick=()=>{ stopAudio(); if(game && game.history.length) { game.total=game.history.length; endGame(); } else { game=null; show("setup"); } };
+$("againBtn").onclick=startGame;
+$("settingsBtn").onclick=()=>{ renderSetup(); show("setup"); };
+document.addEventListener("keydown",e=>{
+  if($("round").classList.contains("hidden")) return;
+  if(e.target.tagName==="INPUT") return;
+  const n=parseInt(e.key,10);
+  if(n>=1 && n<=8 && !game?.current?.picked){ const b=$("options").children[n-1]?.querySelector("button.choose"); if(b) b.click(); }
+  if(e.key===" " && playingBtn){ e.preventDefault(); stopAudio(); markBtn(playingBtn,false); }
+  if(e.key==="Enter" && !$("nextBtn").classList.contains("hidden")) $("nextBtn").click();
+});
+
+initData();
+</script>
+</body>
+</html>
