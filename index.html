@@ -37,6 +37,11 @@
     font:inherit;font-size:14px;cursor:pointer;transition:.15s}
   .pill:hover{border-color:#3a4150}
   .pill.on{background:rgba(30,215,96,.14);border-color:var(--accent);color:#bfffd6}
+  .pill.only{background:rgba(30,215,96,.14);border-color:var(--accent);color:#bfffd6}
+  .pill.only::before{content:"✓ "}
+  .pill.not{background:rgba(255,77,109,.1);border-color:var(--bad);color:#ffb3c1;text-decoration:line-through}
+  .pill.not::before{content:"✕ ";display:inline-block;text-decoration:none}
+  .pill.mini{font-size:12.5px;padding:6px 12px;color:var(--muted)}
   .hint{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5}
   .hint a{color:#b9a8ff}
   .btn{background:var(--accent);color:#04120a;border:0;border-radius:999px;padding:14px 26px;font:600 15px Inter;cursor:pointer;transition:.15s}
@@ -125,6 +130,10 @@
 
       <label class="l">Mindestens so viele monatliche Spotify-Hörer</label>
       <div class="pills" id="minPills"></div>
+
+      <label class="l">Kategorien</label>
+      <div class="pills" id="catPills"></div>
+      <div class="hint">1× klicken = <b style="color:#bfffd6">nur</b> diese Kategorie · 2× = <b style="color:#ffb3c1">ohne</b> diese Kategorie · 3× = egal. Mehrere „nur“ werden kombiniert (z. B. nur Rap + Pop). <button class="pill mini" id="catReset" style="margin-left:6px">Zurücksetzen</button></div>
       <div class="hint" id="poolInfo"></div>
 
       <label class="l">Schwierigkeit</label>
@@ -184,9 +193,11 @@
 <script>
 /* ---------- Config ---------- */
 const LANGS = {de:"Deutsch", en:"Englisch", es:"Spanisch", fr:"Französisch", it:"Italienisch", tr:"Türkisch", pt:"Portugiesisch", ko:"Koreanisch", ja:"Japanisch"};
-const MINS = [2000000, 5000000, 10000000, 20000000, 40000000];
+const MINS = [500000, 1000000, 2000000, 5000000, 10000000, 20000000, 40000000];
+const CATS = {rap:"Rap / Hip-Hop", pop:"Pop", rock:"Rock / Metal", alt:"Alternative / Indie", electro:"Dance / Elektro",
+  rnb:"R&B / Soul", latin:"Latin", schlager:"Schlager", asian:"K-Pop / J-Pop", other:"Sonstige", none:"Unbekannt"};
 const DIFFS = {
-  easy:{label:"Leicht", pool:20, desc:"Hit + 7 Songs aus den Top 20"},
+  easy:{label:"Leicht", pool:15, desc:"Hit + 7 Songs aus den Top 15"},
   mid: {label:"Mittel", pool:12, desc:"Hit + 7 Songs aus den Top 12"},
   hard:{label:"Schwer", pool:8,  desc:"Genau die Top 8"},
 };
@@ -197,7 +208,8 @@ const PLAYERS = {preview:"Hörproben (30 s)", spotify:"Spotify-Player"};
 const $ = id => document.getElementById(id);
 function load(){ try{ return JSON.parse(localStorage.getItem("toptrack.v3")); }catch(e){ return null; } }
 function save(){ try{ localStorage.setItem("toptrack.v3", JSON.stringify(S)); }catch(e){} }
-let S = Object.assign({langs:["de"], min:2000000, diff:"mid", rounds:10, player:"preview"}, load()||{});
+let S = Object.assign({langs:["de"], min:1000000, diff:"mid", rounds:10, player:"preview", cats:{}}, load()||{});
+if(!S.cats || typeof S.cats!=="object") S.cats = {};
 let DATA = null, game = null;
 
 const fmt = n => Number(n).toLocaleString("de-DE");
@@ -230,11 +242,14 @@ async function initData(){
   if(d) useData(d); else { $("dataMissing").classList.remove("hidden"); $("setupBody").classList.add("hidden"); }
 }
 function useData(d){
-  DATA = d.artists.map(([name,id,listeners,lang,songs])=>({name,id,listeners,lang,songs:songs.map(([t,tid,s])=>({name:t,id:tid,streams:s}))}));
+  DATA = d.artists.map(([name,id,listeners,lang,songs,cats])=>({name,id,listeners,lang,
+    cats: cats ? cats.split(",") : ["none"],
+    songs:songs.map(([t,tid,s])=>({name:t,id:tid,streams:s}))}));
   $("dataMissing").classList.add("hidden"); $("setupBody").classList.remove("hidden");
   $("dataInfo").textContent = `Spotify-Daten vom ${new Date(d.generated).toLocaleDateString("de-DE")} · ${fmt(DATA.length)} Künstler · Quelle: kworb.net · aktualisiert sich jeden Montag automatisch`;
   renderSetup();
 }
+$("catReset").addEventListener("click", ()=>{ S.cats={}; renderSetup(); save(); });
 $("dataFile").addEventListener("change", async e=>{
   const f=e.target.files[0]; if(!f) return;
   try{ const d=parseDataText(await f.text()); useData(d); IDB.set("data", d).catch(()=>{}); $("setupErr").textContent=""; }
@@ -242,7 +257,14 @@ $("dataFile").addEventListener("change", async e=>{
 });
 
 /* ---------- Setup UI ---------- */
-function pool(){ return DATA ? DATA.filter(a=>S.langs.includes(a.lang) && a.listeners>=S.min) : []; }
+function catOk(a){
+  const only = Object.keys(S.cats).filter(k=>S.cats[k]==="only");
+  const not  = Object.keys(S.cats).filter(k=>S.cats[k]==="not");
+  if(only.length && !a.cats.some(c=>only.includes(c))) return false;
+  if(not.length && a.cats.some(c=>not.includes(c))) return false;
+  return true;
+}
+function pool(){ return DATA ? DATA.filter(a=>S.langs.includes(a.lang) && a.listeners>=S.min && catOk(a)) : []; }
 function pills(el, items, isOn, onClick){
   el.innerHTML = "";
   items.forEach(([val,label,title])=>{
@@ -253,13 +275,24 @@ function pills(el, items, isOn, onClick){
   });
 }
 function renderSetup(){
-  const count = l => DATA ? DATA.filter(a=>a.lang===l && a.listeners>=S.min).length : 0;
+  const count = l => DATA ? DATA.filter(a=>a.lang===l && a.listeners>=S.min && catOk(a)).length : 0;
   pills($("langPills"), Object.entries(LANGS).map(([k,v])=>[k, `${v} (${count(k)})`]), v=>S.langs.includes(v),
     v=>{ S.langs = S.langs.includes(v) ? S.langs.filter(x=>x!==v) : [...S.langs,v]; });
   pills($("minPills"), MINS.map(m=>[m, short(m)]), v=>S.min===v, v=>S.min=v);
   pills($("diffPills"), Object.entries(DIFFS).map(([k,v])=>[k,v.label,v.desc]), v=>S.diff===v, v=>S.diff=v);
   pills($("roundPills"), ROUNDS.map(r=>[r,r+" Runden"]), v=>S.rounds===v, v=>S.rounds=v);
   pills($("playerPills"), Object.entries(PLAYERS), v=>S.player===v, v=>S.player=v);
+  // Kategorien: Anzahl bezieht sich auf gewählte Sprachen + Hörer-Grenze
+  const base = DATA ? DATA.filter(a=>S.langs.includes(a.lang) && a.listeners>=S.min) : [];
+  const el=$("catPills"); el.innerHTML="";
+  for(const [k,label] of Object.entries(CATS)){
+    const n = base.filter(a=>a.cats.includes(k)).length;
+    if(!n && !S.cats[k]) continue;
+    const b=document.createElement("button");
+    b.className="pill"+(S.cats[k]? " "+S.cats[k] : ""); b.textContent=`${label} (${n})`;
+    b.onclick=()=>{ const s=S.cats[k]; if(!s) S.cats[k]="only"; else if(s==="only") S.cats[k]="not"; else delete S.cats[k]; renderSetup(); save(); };
+    el.appendChild(b);
+  }
   const n=pool().length;
   $("poolInfo").textContent = n ? `${n} Künstler passen zu deiner Auswahl.` : "Mit dieser Auswahl gibt es keine Künstler. Senke die Hörer-Grenze oder wähle mehr Sprachen.";
   $("startBtn").disabled = n===0;
@@ -396,7 +429,7 @@ function buildRound(){
   const rest = shuffle(range).slice(0,7);
   const options = shuffle([top, ...rest]);
   const ranked = [...options].sort((x,y)=>y.streams-x.streams);
-  return {artist:a.name, artistId:a.id, listeners:a.listeners, lang:a.lang, options, ranked};
+  return {artist:a.name, artistId:a.id, listeners:a.listeners, lang:a.lang, cats:a.cats, options, ranked};
 }
 
 /* ---------- Spielablauf ---------- */
@@ -437,7 +470,7 @@ function renderRound(r){
     const img=new Image(); img.onload=()=>{ if(game?.current!==r) return; av.style.background=`url("${url}")`; av.textContent=""; }; img.src=url;
   });
   $("artistName").textContent = r.artist;
-  $("artistMeta").innerHTML = `${esc(short(r.listeners))} monatliche Hörer · ${esc(LANGS[r.lang])} · <a href="https://open.spotify.com/artist/${r.artistId}" target="_blank" rel="noopener" style="color:#9fe8bb">Spotify-Profil ↗</a>`;
+  $("artistMeta").innerHTML = `${esc(short(r.listeners))} monatliche Hörer · ${esc(LANGS[r.lang])}${r.cats.filter(c=>c!=="none").length? " · "+esc(r.cats.filter(c=>c!=="none").map(c=>CATS[c]).join(", ")):""} · <a href="https://open.spotify.com/artist/${r.artistId}" target="_blank" rel="noopener" style="color:#9fe8bb">Spotify-Profil ↗</a>`;
   $("result").classList.add("hidden"); $("nextBtn").classList.add("hidden");
   $("spotifyBox").classList.toggle("hidden", !(S.player==="spotify" && spCtrl));
   const box=$("options"); box.innerHTML="";
