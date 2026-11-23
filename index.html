@@ -138,6 +138,18 @@
   .songpanel .prog{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);width:0}
   @media (max-width:560px){.songpanel .scover{width:64px;height:64px;font-size:28px} .songpanel .stitle{font-size:19px}}
   .tile.artist-tile .cover.ph{font-size:40px}
+  .hintbox{margin:-8px 0 20px;display:flex;flex-direction:column;gap:10px}
+  .hintbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .hbtn{background:var(--panel2);border:1px dashed #3a4150;color:var(--text);border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer;transition:.15s}
+  .hbtn:hover:not(:disabled){border-color:var(--warn);color:#ffe0a8}
+  .hbtn:disabled{cursor:default;opacity:.45}
+  .hbtn.used{border-style:solid;border-color:var(--warn);background:rgba(255,181,71,.1);color:#ffe0a8;opacity:1}
+  .hbtn .c{font-size:12px;color:var(--muted);margin-left:4px}
+  .hintpts{margin-left:auto;font:600 14px "Space Grotesk";color:var(--muted)}
+  .hintpts b{color:var(--text)}
+  .hintvals{display:flex;flex-wrap:wrap;gap:8px}
+  .hval{background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.35);border-radius:12px;padding:8px 12px;font-size:14px}
+  .hval b{color:#ffe0a8}
   .tile .lis{font:500 12px Inter;color:rgba(255,255,255,.75);margin-top:3px}
   .loadingbox{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:50px 0;color:var(--muted)}
   .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite}
@@ -293,6 +305,15 @@
       </div>
       <button class="play" id="sPlay" title="Song abspielen / neu starten"><span>▶</span></button>
       <div class="prog"></div>
+    </div>
+    <div class="hintbox hidden" id="hintBox">
+      <div class="hintbtns">
+        <button class="hbtn" data-h="year">📅 Erscheinungsjahr<span class="c">−25</span></button>
+        <button class="hbtn" data-h="streams">📈 Streams<span class="c">−25</span></button>
+        <button class="hbtn" data-h="rank">🏅 Platzierung<span class="c">−25</span></button>
+        <span class="hintpts" id="hintPts"></span>
+      </div>
+      <div class="hintvals" id="hintVals"></div>
     </div>
     <div class="artist" id="artistHead">
       <div class="avatar" id="avatar">A</div>
@@ -490,13 +511,13 @@ function findPreview(artist, title){
       const d = await jsonp("https://api.deezer.com/search?output=jsonp&q="+encodeURIComponent(artist+" "+clean));
       const list = (d.data||[]).filter(x=>x.preview && artistMatch(x.artist?.name, artist));
       const hit = list.find(x=>titleMatch(x.title, title) || titleMatch(x.title_short, title));
-      if(hit) return {url:hit.preview};
+      if(hit) return {url:hit.preview, dz:hit.id};
     }catch(e){}
     try{
       const d = await jsonp("https://itunes.apple.com/search?entity=song&limit=25&term="+encodeURIComponent(artist+" "+clean));
       const list = (d.results||[]).filter(x=>x.previewUrl && artistMatch(x.artistName, artist));
       const hit = list.find(x=>titleMatch(x.trackName, title));
-      if(hit) return {url:hit.previewUrl};
+      if(hit) return {url:hit.previewUrl, year:+String(hit.releaseDate||"").slice(0,4)||null};
     }catch(e){}
     return null;
   })();
@@ -654,7 +675,7 @@ async function nextRound(){
 }
 function showLoading(msg){
   show("round");
-  $("artistHead").classList.add("hidden"); $("songPanel").classList.add("hidden");
+  $("artistHead").classList.add("hidden"); $("songPanel").classList.add("hidden"); $("hintBox").classList.add("hidden");
   $("qText").textContent=""; $("confirmRow").classList.add("hidden");
   $("result").classList.add("hidden"); $("nextBtn").classList.add("hidden");
   $("options").innerHTML = `<div class="loadingbox"><div class="spin"></div><div>${esc(msg)}</div></div>`;
@@ -688,16 +709,74 @@ async function buildArtistRound(){
     const a = cands[rnd(cands.length)];
     game.used.add(a.id);
     for(const s of shuffle(a.songs.slice(0, topN)).slice(0,3)){
-      const p = await findPreview(a.name, s.name);
+      const [p, year] = await Promise.all([findPreview(a.name, s.name), earliestYear(a.name, s.name)]);
       if(!p) continue;
+      const sameLang = DATA.filter(x=>x.lang===a.lang);
       const opts = shuffle([a, ...pickDistractors(a, 7)]).map(x=>({name:x.name, id:x.id, listeners:x.listeners}));
       return {mode:"artist", song:{name:s.name, id:s.id, streams:s.streams}, preview:p.url, showTitle:S.diff!=="hard",
+              tips:{year, streams:s.streams, rank:sameLang.findIndex(x=>x.id===a.id)+1, of:sameLang.length, listeners:a.listeners, lang:a.lang},
               artist:a.name, artistId:a.id, lang:a.lang, cats:a.cats, listeners:a.listeners,
               options:opts, correct:opts.findIndex(o=>o.id===a.id)};
     }
   }
   return null;
 }
+// Erscheinungsjahr: alle Versionen bei Deezer + iTunes sammeln (Single, Album, Best-of, Remaster …)
+// und das früheste Jahr nehmen, das mehrfach vorkommt – so fallen Neuauflagen und Fehldaten raus.
+const stripTitle = t => String(t).replace(/\s*[\(\[][^\)\]]*[\)\]]/g,"").replace(/\s+-\s+.*$/,"");
+const sameTitle = (a,b) => { a=normName(stripTitle(a)); b=normName(stripTitle(b)); return !!a && a===b; };
+async function earliestYear(artist, title){
+  try{
+    const clean = stripTitle(title), years = [];
+    const [dz, it] = await Promise.all([
+      jsonp("https://api.deezer.com/search?output=jsonp&limit=25&q="+encodeURIComponent(artist+" "+clean)).catch(()=>({})),
+      jsonp("https://itunes.apple.com/search?entity=song&limit=50&term="+encodeURIComponent(artist+" "+clean)).catch(()=>({}))]);
+    for(const x of (it.results||[])) if(artistMatch(x.artistName, artist) && sameTitle(x.trackName, title)){
+      const y=+String(x.releaseDate||"").slice(0,4); if(y>1900) years.push(y); }
+    const cands = (dz.data||[]).filter(x=>artistMatch(x.artist?.name, artist) && sameTitle(x.title, title)).slice(0,4);
+    const albums = await Promise.all(cands.map(c=>jsonp("https://api.deezer.com/album/"+c.album.id+"?output=jsonp").catch(()=>null)));
+    for(const al of albums){ const y=+String(al?.release_date||"").slice(0,4); if(y>1900) years.push(y); }
+    if(!years.length) return null;
+    const count = {}; for(const y of years) count[y]=(count[y]||0)+1;
+    const multi = Object.keys(count).filter(y=>count[y]>=2).map(Number);
+    return multi.length ? Math.min(...multi) : Math.min(...years);
+  }catch(e){ return null; }
+}
+
+/* --- Tipps (nur „Wer singt das?“) --- */
+const HINT_COST = 25;
+const hintPoints = n => Math.max(100 - HINT_COST*n, 25);
+const LANG_ADJ = {de:"deutschsprachigen", en:"englischsprachigen", es:"spanischsprachigen", fr:"französischsprachigen", it:"italienischsprachigen",
+                  tr:"türkischsprachigen", pt:"portugiesischsprachigen", ko:"koreanischsprachigen", ja:"japanischsprachigen"};
+function hintText(key, t){
+  if(key==="year")    return t.year ? `📅 Erschienen <b>${t.year}</b>` : "📅 Jahr unbekannt";
+  if(key==="streams") return `📈 <b>${short(t.streams)}</b> Streams auf Spotify`;
+  if(key==="rank")    return `🏅 Platz <b>${fmt(t.rank)}</b> der meistgehörten ${LANG_ADJ[t.lang]||""} Künstler · <b>${short(t.listeners)}</b> monatliche Hörer`;
+  return "";
+}
+function renderHints(r){
+  const box=$("hintBox");
+  box.classList.toggle("hidden", !r.tips);
+  if(!r.tips) return;
+  r.hintsUsed = r.hintsUsed || [];
+  for(const b of box.querySelectorAll(".hbtn")){
+    const k=b.dataset.h, used=r.hintsUsed.includes(k);
+    const missing = k==="year" && !r.tips.year;
+    b.classList.toggle("used", used);
+    b.disabled = used || missing || !!r.picked;
+    b.title = missing ? "Für diesen Song ist kein Erscheinungsjahr bekannt" : (used ? "Schon genutzt" : `Tipp anzeigen (−${HINT_COST} Punkte)`);
+  }
+  $("hintVals").innerHTML = r.hintsUsed.map(k=>`<div class="hval">${hintText(k, r.tips)}</div>`).join("");
+  $("hintPts").innerHTML = r.picked ? "" : `Mögliche Punkte: <b>${hintPoints(r.hintsUsed.length)}</b>`;
+}
+function useHint(k){
+  const r=game?.current; if(!r || r.mode!=="artist" || r.picked || !r.tips) return;
+  r.hintsUsed = r.hintsUsed || [];
+  if(r.hintsUsed.includes(k) || (k==="year" && !r.tips.year)) return;
+  r.hintsUsed.push(k);
+  renderHints(r);
+}
+
 function renderArtistRound(r){
   show("round");
   $("round").classList.remove("pop"); void $("round").offsetWidth; $("round").classList.add("pop");
@@ -730,6 +809,8 @@ function renderArtistRound(r){
         c.classList.remove("ph"); c.textContent=""; c.setAttribute("style",`background-image:url("${url}")`); }; img.src=url;
     });
   });
+  r.hintsUsed = [];
+  renderHints(r);
   playSongPanel();
 }
 async function playSongPanel(){
@@ -744,6 +825,7 @@ async function playSongPanel(){
   playingBtn = btn; markBtn(btn, true);
 }
 function revealArtistTiles(r, i, who){
+  r.picked = true; renderHints(r);
   $("confirmRow").classList.add("hidden");
   $("options").classList.remove("has-sel");
   [...$("options").children].forEach(o=>{
@@ -767,14 +849,15 @@ function revealArtistTiles(r, i, who){
 function resolveArtistSolo(i){
   const r=game.current; r.picked=true;
   const ok = i===r.correct;
-  const pts = ok ? 100 + game.streak*20 : 0;
+  const nh = (r.hintsUsed||[]).length;
+  const pts = ok ? hintPoints(nh) + game.streak*20 : 0;
   game.streak = ok ? game.streak+1 : 0; game.best=Math.max(game.best, game.streak); game.score += pts;
   game.history.push({mode:"artist", artist:r.artist, top:r.song.name, topStreams:r.song.streams, pick:r.options[i].name, ok, rank:ok?1:0, pts});
   revealArtistTiles(r, i, null);
   const v=$("verdict");
   if(ok){ v.className="verdict good"; v.textContent=`Richtig! +${pts} Punkte`+(game.streak>1?` · ${game.streak}er-Streak 🔥`:""); }
   else { v.className="verdict bad"; v.textContent=`Leider falsch – das war ${r.artist}.`; }
-  $("verdictSub").textContent = "";
+  $("verdictSub").textContent = nh ? `${nh} ${nh===1?"Tipp":"Tipps"} genutzt` + (ok ? ` (−${100-hintPoints(nh)} Punkte)` : "") : (ok ? "Ohne Tipp – volle Punktzahl!" : "");
   $("result").classList.remove("hidden");
   $("nextBtn").textContent = game.round>=game.total ? "Ergebnis ansehen →" : "Nächster Song →";
   $("nextBtn").classList.remove("hidden");
@@ -790,7 +873,7 @@ function avatarStyle(name){
 function renderRound(r){
   if(r.mode==="artist") return renderArtistRound(r);
   show("round");
-  $("artistHead").classList.remove("hidden"); $("songPanel").classList.add("hidden");
+  $("artistHead").classList.remove("hidden"); $("songPanel").classList.add("hidden"); $("hintBox").classList.add("hidden");
   $("qText").textContent = "Welcher dieser Songs hat die meisten Streams auf Spotify? Cover antippen spielt den Song ab und wählt ihn aus, nochmal antippen startet ihn neu.";
   $("round").classList.remove("pop"); void $("round").offsetWidth; $("round").classList.add("pop");
   const av=$("avatar"); av.setAttribute("style", avatarStyle(r.artist));
@@ -987,7 +1070,7 @@ function hostOnData(conn, d){
   } else if(d.t==="pick"){
     if(mp.revealed || d.n!==game.round || mp.picks.has(conn.peer)) return;
     const i=+d.i; if(!(i>=0 && i<8)) return;
-    mp.picks.set(conn.peer, i);
+    mp.picks.set(conn.peer, i); mp.hints.set(conn.peer, Math.min(3, Math.max(0, +d.h||0)));
     broadcastStatus(); checkAllAnswered();
   } else if(d.t==="leave"){
     hostDrop(conn.peer);
@@ -1036,9 +1119,9 @@ async function mpNextRound(){
   }
   if(!r){ return mpFinish(); }
   game.current = r;
-  mp.picks = new Map(); mp.revealed = false;
+  mp.picks = new Map(); mp.hints = new Map(); mp.revealed = false;
   const pub = r.mode==="artist"
-    ? {mode:"artist", preview:r.preview, showTitle:r.showTitle, song:r.showTitle?{name:r.song.name}:null,
+    ? {mode:"artist", preview:r.preview, showTitle:r.showTitle, song:r.showTitle?{name:r.song.name}:null, tips:r.tips,
        options:r.options.map(o=>({name:o.name, id:o.id}))}
     : {artist:r.artist, artistId:r.artistId, listeners:r.listeners, lang:r.lang, cats:r.cats,
        options:r.options.map(o=>({name:o.name, id:o.id}))};
@@ -1059,9 +1142,10 @@ function mpReveal(){
   const results = mp.players.map(p=>{
     const idx = mp.picks.has(p.id) ? mp.picks.get(p.id) : null;
     const rank = idx==null ? null : artist ? (idx===r.correct ? 1 : 0) : r.ranked.indexOf(r.options[idx])+1;
-    const pts = rank===1 ? 100 + p.streak*20 : (!artist && rank===2) ? 40 : (!artist && rank===3) ? 20 : 0;
+    const nh = artist ? (mp.hints?.get(p.id) || 0) : 0;
+    const pts = rank===1 ? (artist ? hintPoints(nh) : 100) + p.streak*20 : (!artist && rank===2) ? 40 : (!artist && rank===3) ? 20 : 0;
     p.streak = rank===1 ? p.streak+1 : 0; p.best=Math.max(p.best,p.streak); p.score += pts;
-    return {id:p.id, name:p.name, score:p.score, streak:p.streak, delta:pts, rank, pick:idx};
+    return {id:p.id, name:p.name, score:p.score, streak:p.streak, delta:pts, rank, pick:idx, hints:nh};
   });
   const msg = artist
     ? {t:"reveal", mode:"artist", n:game.round, correct:r.correct, song:r.song, artist:r.artist, listeners:r.options.map(o=>o.listeners), results, last:game.round>=game.total}
@@ -1214,8 +1298,10 @@ function mpSubmit(i){
   r.picked = true; r.myPick = i;
   $("confirmBtn").classList.add("hidden");
   $("selHint").innerHTML = `Gewählt: <b style="color:var(--text)">${esc(r.options[i].name)}</b> – warte auf die anderen …`;
-  if(mp.role==="host"){ mp.picks.set("host", i); broadcastStatus(); checkAllAnswered(); }
-  else { try{ mp.conn.send({t:"pick", n:game.round, i}); }catch(e){} }
+  const h = (r.hintsUsed||[]).length;
+  renderHints(r);
+  if(mp.role==="host"){ mp.picks.set("host", i); mp.hints.set("host", h); broadcastStatus(); checkAllAnswered(); }
+  else { try{ mp.conn.send({t:"pick", n:game.round, i, h}); }catch(e){} }
 }
 function mpApplyReveal(d){
   clearInterval(timerInt); $("mpTimer").classList.add("hidden");
@@ -1244,7 +1330,7 @@ function mpApplyReveal(d){
   else { v.className="verdict bad"; v.textContent="Keine Antwort abgegeben."; }
   if(!artist) $("verdictSub").textContent = `Der größte Hit ist „${r.ranked[0].name}“ mit ${fmt(r.ranked[0].streams)} Streams auf Spotify.`;
   const sorted=[...d.results].sort((a,b)=>b.score-a.score);
-  const label = x => x.pick==null ? "keine Antwort" : artist ? (x.rank===1?"richtig":"falsch") : "Platz "+x.rank;
+  const label = x => x.pick==null ? "keine Antwort" : artist ? (x.rank===1?"richtig":"falsch") + (x.hints ? ` · ${x.hints} ${x.hints===1?"Tipp":"Tipps"}` : "") : "Platz "+x.rank;
   $("mpBoard").innerHTML = sorted.map((x,k)=>`<div class="brow ${x.id===mp.myId?"me":""}"><span class="pos">${k+1}.</span><span>${esc(x.name)} <span class="hint" style="margin:0">· ${label(x)}</span></span><span class="d ${x.delta?"plus":""}">${x.delta?"+"+x.delta:"±0"}</span><span class="pts">${x.score}</span></div>`).join("");
   $("mpBoard").classList.remove("hidden");
   $("result").classList.remove("hidden");
@@ -1280,6 +1366,7 @@ $("copyLink").onclick=async()=>{
 window.addEventListener("beforeunload", ()=>{ if(mp) try{ mpLeave(); }catch(e){} });
 
 $("startBtn").onclick=startGame;
+for(const b of document.querySelectorAll("#hintBox .hbtn")) b.onclick=()=>useHint(b.dataset.h);
 for(const b of document.querySelectorAll("#modePills .mode")) b.onclick=()=>{ S.mode=b.dataset.mode; save(); renderSetup(); };
 $("sPlay").onclick=()=>{ const btn=$("sPlay"); if(playingBtn===btn && !audio.paused) { audio.currentTime=0; audio.play().catch(()=>{}); } else playSongPanel(); };
 $("nextBtn").onclick=()=>{ if(mp && mp.role==="host" && mp.started){ game.round>=game.total ? mpFinish() : mpNextRound(); } else nextRound(); };
