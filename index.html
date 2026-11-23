@@ -113,6 +113,35 @@
   .vol input{width:90px;accent-color:var(--accent)}
   .avatar{background-size:cover!important;background-position:center!important}
   .verdict{margin:18px 0 6px;font:700 22px "Space Grotesk"}
+  /* Modus-Auswahl */
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+  @media (max-width:560px){.modes{grid-template-columns:1fr}}
+  .mode{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;color:var(--text);font:inherit;cursor:pointer;transition:.15s}
+  .mode b{display:block;font:700 17px "Space Grotesk";margin-bottom:4px}
+  .mode span{font-size:13px;color:var(--muted);line-height:1.4}
+  .mode:hover{border-color:#3a4150}
+  .mode.on{border-color:var(--accent);background:rgba(30,215,96,.08)}
+  /* Wer singt das? */
+  .songpanel{display:flex;align-items:center;gap:18px;margin-bottom:22px;background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:16px;position:relative;overflow:hidden}
+  .songpanel .scover{width:96px;height:96px;flex:none;border-radius:12px;display:grid;place-items:center;font:700 40px "Space Grotesk";color:rgba(255,255,255,.5);
+    background:repeating-linear-gradient(45deg,#1f242c,#1f242c 10px,#232932 10px,#232932 20px);background-size:cover;background-position:center}
+  .songpanel .sinfo{flex:1;min-width:0}
+  .songpanel .slabel{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+  .songpanel .stitle{font:700 24px "Space Grotesk";margin:4px 0;word-break:break-word}
+  .songpanel .stitle.locked{color:var(--muted);font-size:18px}
+  .songpanel .ssub{font-size:14px;color:var(--muted)}
+  .songpanel .ssub a{color:#9fe8bb}
+  .songpanel .play{flex:none;width:64px;height:64px;border:0;padding:0;background:none;cursor:pointer}
+  .songpanel .play span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#04120a;font-size:22px;transition:.15s}
+  .songpanel .play:hover span{transform:scale(1.06)}
+  .songpanel .play.loading span{animation:pulse 1s ease infinite}
+  .songpanel .prog{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);width:0}
+  @media (max-width:560px){.songpanel .scover{width:64px;height:64px;font-size:28px} .songpanel .stitle{font-size:19px}}
+  .tile.artist-tile .cover.ph{font-size:40px}
+  .tile .lis{font:500 12px Inter;color:rgba(255,255,255,.75);margin-top:3px}
+  .loadingbox{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:50px 0;color:var(--muted)}
+  .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
   /* Mehrspieler */
   .mpbox{margin-top:28px;padding:20px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(30,215,96,.05))}
   .mpbox .l{margin-top:0}
@@ -165,8 +194,12 @@
 
   <!-- SETUP -->
   <section id="setup" class="card pop">
-    <h1>Welcher Song ist der größte Hit?</h1>
-    <p class="sub">Ein zufälliger Künstler, 8 seiner Songs. Du tippst auf den meistgestreamten. Danach siehst du, ob du richtig lagst und wie viele Spotify-Streams jeder Song hat.</p>
+    <h1 id="setupTitle">Welcher Song ist der größte Hit?</h1>
+    <p class="sub" id="setupSub"></p>
+    <div class="modes" id="modePills">
+      <button class="mode" data-mode="hit"><b>🏆 Größter Hit</b><span>Ein Künstler, 8 seiner Songs – welcher hat die meisten Streams?</span></button>
+      <button class="mode" data-mode="artist"><b>🎤 Wer singt das?</b><span>Ein Song läuft – welcher der 8 Künstler ist es?</span></button>
+    </div>
 
     <div id="dataMissing" class="hidden" style="margin-top:20px;padding:16px;border:1px solid var(--warn);border-radius:12px;background:rgba(255,181,71,.07)">
       <b>Spotify-Daten fehlen.</b>
@@ -188,13 +221,16 @@
 
       <label class="l">Schwierigkeit</label>
       <div class="pills" id="diffPills"></div>
+      <div class="hint" id="diffInfo"></div>
 
       <label class="l">Runden</label>
       <div class="pills" id="roundPills"></div>
 
+      <div id="playerSetting">
       <label class="l">Player</label>
       <div class="pills" id="playerPills"></div>
       <div class="hint">Hörproben: 30 Sekunden direkt in der Karte. Spotify: der echte Spotify-Player unter den Songs. Bist du im Browser bei Spotify eingeloggt, laufen die Songs dort komplett.</div>
+      </div>
 
       <div class="row" style="margin-top:24px">
         <button class="btn" id="startBtn">Allein spielen</button>
@@ -248,14 +284,24 @@
 
   <!-- ROUND -->
   <section id="round" class="card hidden">
-    <div class="artist">
+    <div class="songpanel hidden" id="songPanel">
+      <div class="scover" id="sCover">?</div>
+      <div class="sinfo">
+        <div class="slabel" id="sLabel">Dieser Song läuft</div>
+        <div class="stitle" id="sTitle"></div>
+        <div class="ssub" id="sSub"></div>
+      </div>
+      <button class="play" id="sPlay" title="Song abspielen / neu starten"><span>▶</span></button>
+      <div class="prog"></div>
+    </div>
+    <div class="artist" id="artistHead">
       <div class="avatar" id="avatar">A</div>
       <div>
         <h2 id="artistName">Artist</h2>
         <div class="meta" id="artistMeta"></div>
       </div>
     </div>
-    <div class="q">Welcher dieser Songs hat die meisten Streams auf Spotify? Cover antippen spielt den Song ab und wählt ihn aus, nochmal antippen startet ihn neu.</div>
+    <div class="q" id="qText">Welcher dieser Songs hat die meisten Streams auf Spotify? Cover antippen spielt den Song ab und wählt ihn aus, nochmal antippen startet ihn neu.</div>
     <div class="mpbar hidden" id="mpBar"><div class="players" id="mpPlayers"></div><div class="timer hidden" id="mpTimer">30</div></div>
     <div class="grid" id="options"></div>
     <div class="confirm-row" id="confirmRow">
@@ -302,13 +348,23 @@ const DIFFS = {
   hard:{label:"Schwer", pool:8,  desc:"Genau die Top 8"},
 };
 const ROUNDS = [5,10,15];
+const MODES = {
+  hit:   {title:"Welcher Song ist der größte Hit?", sub:"Ein zufälliger Künstler, 8 seiner Songs. Du tippst auf den meistgestreamten. Danach siehst du, ob du richtig lagst und wie viele Spotify-Streams jeder Song hat."},
+  artist:{title:"Wer singt das?", sub:"Ein Song läuft, ohne Cover. Welcher der 8 Künstler singt ihn? Je schwerer, desto ähnlicher sind sich die Künstler."},
+};
+const DIFFS_ARTIST = {
+  easy:{label:"Leicht", desc:"Songtitel sichtbar · große Hits · Künstler bunt gemischt"},
+  mid: {label:"Mittel", desc:"Songtitel sichtbar · Künstler aus derselben Sprache"},
+  hard:{label:"Schwer", desc:"Nur Audio, kein Titel · ähnliche Künstler (Sprache, Genre, Bekanntheit)"},
+};
 const PLAYERS = {preview:"Hörproben (30 s)", spotify:"Spotify-Player"};
 
 /* ---------- State ---------- */
 const $ = id => document.getElementById(id);
 function load(){ try{ return JSON.parse(localStorage.getItem("toptrack.v3")); }catch(e){ return null; } }
 function save(){ try{ localStorage.setItem("toptrack.v3", JSON.stringify(S)); }catch(e){} }
-let S = Object.assign({langs:["de"], min:1000000, diff:"mid", rounds:10, player:"preview", cats:{}}, load()||{});
+let S = Object.assign({langs:["de"], min:1000000, diff:"mid", rounds:10, player:"preview", cats:{}, mode:"hit"}, load()||{});
+if(!MODES[S.mode]) S.mode="hit";
 if(!S.cats || typeof S.cats!=="object") S.cats = {};
 let DATA = null, game = null;
 
@@ -379,7 +435,13 @@ function renderSetup(){
   pills($("langPills"), Object.entries(LANGS).map(([k,v])=>[k, `${v} (${count(k)})`]), v=>S.langs.includes(v),
     v=>{ S.langs = S.langs.includes(v) ? S.langs.filter(x=>x!==v) : [...S.langs,v]; });
   pills($("minPills"), MINS.map(m=>[m, short(m)]), v=>S.min===v, v=>S.min=v);
-  pills($("diffPills"), Object.entries(DIFFS).map(([k,v])=>[k,v.label,v.desc]), v=>S.diff===v, v=>S.diff=v);
+  const D = S.mode==="artist" ? DIFFS_ARTIST : DIFFS;
+  pills($("diffPills"), Object.entries(D).map(([k,v])=>[k,v.label,v.desc]), v=>S.diff===v, v=>S.diff=v);
+  $("diffPills").title = D[S.diff]?.desc || "";
+  for(const b of document.querySelectorAll("#modePills .mode")) b.classList.toggle("on", b.dataset.mode===S.mode);
+  $("setupTitle").textContent = MODES[S.mode].title; $("setupSub").textContent = MODES[S.mode].sub;
+  $("playerSetting").classList.toggle("hidden", S.mode==="artist");
+  $("diffInfo").textContent = D[S.diff]?.desc || "";
   pills($("roundPills"), ROUNDS.map(r=>[r,r+" Runden"]), v=>S.rounds===v, v=>S.rounds=v);
   pills($("playerPills"), Object.entries(PLAYERS), v=>S.player===v, v=>S.player=v);
   // Kategorien: Anzahl bezieht sich auf gewählte Sprachen + Hörer-Grenze
@@ -475,7 +537,7 @@ function stopAudio(){
   if(spCtrl){ try{ spCtrl.pause(); }catch(e){} }
 }
 audio.addEventListener("timeupdate", ()=>{
-  if(!playingBtn || !audio.duration || S.player!=="preview") return;
+  if(!playingBtn || !audio.duration || (S.player!=="preview" && game?.current?.mode!=="artist")) return;
   const p=playingBtn.parentElement.querySelector(".prog"); if(p) p.style.width=(audio.currentTime/audio.duration*100)+"%";
 });
 audio.addEventListener("ended", ()=>{ markBtn(playingBtn,false); playingBtn=null; });
@@ -571,15 +633,152 @@ function startGame(){
   $("hTotal").textContent = game.total;
   nextRound();
 }
-function nextRound(){
+async function nextRound(){
   stopAudio();
+  if(game.loading) return;
   game.round++;
   if(game.round > game.total) return endGame();
-  const r = buildRound();
-  if(!r) return endGame();
-  game.current = r;
   updateHud();
+  let r;
+  if(S.mode==="artist"){
+    showLoading("Suche einen Song …");
+    game.loading = true;
+    const g = game;
+    r = await buildArtistRound();
+    g.loading = false;
+    if(game!==g) return;                     // inzwischen beendet
+  } else r = buildRound();
+  if(!r){ game.total = game.round-1; return endGame(); }
+  game.current = r;
   renderRound(r);
+}
+function showLoading(msg){
+  show("round");
+  $("artistHead").classList.add("hidden"); $("songPanel").classList.add("hidden");
+  $("qText").textContent=""; $("confirmRow").classList.add("hidden");
+  $("result").classList.add("hidden"); $("nextBtn").classList.add("hidden");
+  $("options").innerHTML = `<div class="loadingbox"><div class="spin"></div><div>${esc(msg)}</div></div>`;
+}
+
+/* ---------- Wer singt das? ---------- */
+function pickDistractors(a, n){
+  const same = x => x.id===a.id || normName(x.name)===normName(a.name);
+  const p = pool().filter(x=>!same(x));
+  let cand;
+  if(S.diff==="easy") cand = p;
+  else if(S.diff==="mid") cand = p.filter(x=>x.lang===a.lang);
+  else {
+    const ac = a.cats.filter(c=>c!=="none");
+    cand = p.filter(x=>x.lang===a.lang && (!ac.length || x.cats.some(c=>ac.includes(c))))
+            .sort((x,y)=>Math.abs(Math.log(x.listeners/a.listeners))-Math.abs(Math.log(y.listeners/a.listeners)))
+            .slice(0, 24);
+  }
+  const out = shuffle(cand).slice(0,n);
+  // auffüllen, falls die Auswahl zu klein ist: erst aus dem Pool, dann aus allen Daten derselben Sprache
+  const fill = list => { for(const x of shuffle(list)){ if(out.length>=n) break; if(!same(x) && !out.some(o=>o.id===x.id || normName(o.name)===normName(x.name))) out.push(x); } };
+  if(S.diff!=="easy"){ fill(p.filter(x=>x.lang===a.lang)); fill(DATA.filter(x=>x.lang===a.lang && x.listeners>=S.min)); fill(DATA.filter(x=>x.lang===a.lang)); }
+  fill(p); fill(DATA);
+  return out.slice(0,n);
+}
+async function buildArtistRound(){
+  const topN = S.diff==="easy" ? 3 : S.diff==="mid" ? 8 : 15;
+  for(let tries=0; tries<10; tries++){
+    const cands = pool().filter(a=>!game.used.has(a.id));
+    if(!cands.length) return null;
+    const a = cands[rnd(cands.length)];
+    game.used.add(a.id);
+    for(const s of shuffle(a.songs.slice(0, topN)).slice(0,3)){
+      const p = await findPreview(a.name, s.name);
+      if(!p) continue;
+      const opts = shuffle([a, ...pickDistractors(a, 7)]).map(x=>({name:x.name, id:x.id, listeners:x.listeners}));
+      return {mode:"artist", song:{name:s.name, id:s.id, streams:s.streams}, preview:p.url, showTitle:S.diff!=="hard",
+              artist:a.name, artistId:a.id, lang:a.lang, cats:a.cats, listeners:a.listeners,
+              options:opts, correct:opts.findIndex(o=>o.id===a.id)};
+    }
+  }
+  return null;
+}
+function renderArtistRound(r){
+  show("round");
+  $("round").classList.remove("pop"); void $("round").offsetWidth; $("round").classList.add("pop");
+  $("artistHead").classList.add("hidden"); $("songPanel").classList.remove("hidden");
+  $("spotifyBox").classList.add("hidden");
+  $("sCover").setAttribute("style",""); $("sCover").textContent="?";
+  $("sLabel").textContent = "Dieser Song läuft";
+  const st=$("sTitle");
+  if(r.showTitle && r.song?.name){ st.textContent = "„"+r.song.name+"“"; st.classList.remove("locked"); }
+  else { st.textContent = "🔒 Titel versteckt"; st.classList.add("locked"); }
+  $("sSub").textContent = "Wer singt diesen Song? Mit ▶ startest du ihn neu.";
+  $("qText").textContent = "Wähle den Künstler aus und bestätige deine Auswahl.";
+  $("result").classList.add("hidden"); $("nextBtn").classList.add("hidden");
+  const box=$("options"); box.innerHTML=""; box.classList.remove("has-sel");
+  r.sel = null;
+  $("confirmRow").classList.remove("hidden");
+  $("confirmBtn").disabled = true; $("confirmBtn").classList.remove("hidden");
+  $("selHint").textContent = "Tippe auf einen Künstler, um ihn auszuwählen.";
+  r.options.forEach((a,i)=>{
+    const o=document.createElement("div"); o.className="tile artist-tile"; o.dataset.i=i; o.tabIndex=0;
+    o.setAttribute("role","button"); o.setAttribute("aria-label", a.name);
+    o.innerHTML = `<div class="cover ph" style="${avatarStyle(a.name)}">${esc([...a.name.replace(/^the\s+/i,"")][0]?.toUpperCase()||"?")}</div><div class="shade"></div>
+      <div class="num"><b>${i+1}</b></div><div class="t">${esc(a.name)}</div>`;
+    o.onclick=()=>selectTile(i);
+    o.onkeydown=e=>{ if(e.key===" "&&e.target===o){ e.preventDefault(); selectTile(i); } };
+    box.appendChild(o);
+    spotifyThumb("artist", a.id).then(url=>{
+      if(!url || game?.current!==r) return;
+      const img=new Image(); img.onload=()=>{ if(game?.current!==r) return; const c=o.querySelector(".cover");
+        c.classList.remove("ph"); c.textContent=""; c.setAttribute("style",`background-image:url("${url}")`); }; img.src=url;
+    });
+  });
+  playSongPanel();
+}
+async function playSongPanel(){
+  const r=game?.current; if(!r || r.mode!=="artist" || !r.preview) return;
+  const btn=$("sPlay");
+  ++playToken;
+  if(playingBtn===btn){ audio.currentTime=0; try{ await audio.play(); }catch(e){} return; }
+  stopAudio();
+  audio.src = r.preview;
+  try{ await audio.play(); }catch(e){ $("sSub").textContent="Tippe auf ▶, um den Song abzuspielen."; return; }
+  if(game?.current!==r){ audio.pause(); return; }
+  playingBtn = btn; markBtn(btn, true);
+}
+function revealArtistTiles(r, i, who){
+  $("confirmRow").classList.add("hidden");
+  $("options").classList.remove("has-sel");
+  [...$("options").children].forEach(o=>{
+    const j=+o.dataset.i, a=r.options[j];
+    o.classList.remove("sel"); o.classList.add("done");
+    o.onclick=null; o.removeAttribute("tabindex");
+    if(j===r.correct) o.classList.add("correct");
+    if(j===i && j!==r.correct) o.classList.add("wrong");
+    o.querySelector(".num").outerHTML = j===r.correct ? `<div class="rk r1" title="Richtig">✓</div>` : (j===i ? `<div class="rk" title="Dein Tipp" style="background:var(--bad)">✗</div>` : `<div class="num"><b>${j+1}</b></div>`);
+    o.querySelector(".t").innerHTML = `${esc(a.name)}<div class="lis">${a.listeners?short(a.listeners)+" Hörer/Monat":""}</div>`;
+    o.insertAdjacentHTML("beforeend", `<a class="sp" href="https://open.spotify.com/artist/${a.id}" target="_blank" rel="noopener" title="Auf Spotify öffnen" style="right:8px">Spotify ↗</a>`);
+    o.querySelector(".sp").onclick=e=>e.stopPropagation();
+    if(who && who[j]?.length) o.insertAdjacentHTML("beforeend", `<div class="who">${who[j].map(n=>`<span class="${n.me?"me":""}">${esc(n.name)}</span>`).join("")}</div>`);
+  });
+  // Song jetzt komplett zeigen: Titel, Künstler, Cover
+  $("sLabel").textContent = "Auflösung";
+  $("sTitle").textContent = "„"+r.song.name+"“"; $("sTitle").classList.remove("locked");
+  $("sSub").innerHTML = `von <b style="color:var(--text)">${esc(r.artist)}</b> · ${short(r.song.streams)} Streams · <a href="https://open.spotify.com/track/${r.song.id}" target="_blank" rel="noopener">Auf Spotify öffnen ↗</a>`;
+  spotifyThumb("track", r.song.id).then(url=>{ if(url && game?.current===r){ $("sCover").textContent=""; $("sCover").setAttribute("style",`background-image:url("${url}")`); } });
+}
+function resolveArtistSolo(i){
+  const r=game.current; r.picked=true;
+  const ok = i===r.correct;
+  const pts = ok ? 100 + game.streak*20 : 0;
+  game.streak = ok ? game.streak+1 : 0; game.best=Math.max(game.best, game.streak); game.score += pts;
+  game.history.push({mode:"artist", artist:r.artist, top:r.song.name, topStreams:r.song.streams, pick:r.options[i].name, ok, rank:ok?1:0, pts});
+  revealArtistTiles(r, i, null);
+  const v=$("verdict");
+  if(ok){ v.className="verdict good"; v.textContent=`Richtig! +${pts} Punkte`+(game.streak>1?` · ${game.streak}er-Streak 🔥`:""); }
+  else { v.className="verdict bad"; v.textContent=`Leider falsch – das war ${r.artist}.`; }
+  $("verdictSub").textContent = "";
+  $("result").classList.remove("hidden");
+  $("nextBtn").textContent = game.round>=game.total ? "Ergebnis ansehen →" : "Nächster Song →";
+  $("nextBtn").classList.remove("hidden");
+  updateHud();
 }
 
 function avatarStyle(name){
@@ -589,7 +788,10 @@ function avatarStyle(name){
 }
 
 function renderRound(r){
+  if(r.mode==="artist") return renderArtistRound(r);
   show("round");
+  $("artistHead").classList.remove("hidden"); $("songPanel").classList.add("hidden");
+  $("qText").textContent = "Welcher dieser Songs hat die meisten Streams auf Spotify? Cover antippen spielt den Song ab und wählt ihn aus, nochmal antippen startet ihn neu.";
   $("round").classList.remove("pop"); void $("round").offsetWidth; $("round").classList.add("pop");
   const av=$("avatar"); av.setAttribute("style", avatarStyle(r.artist));
   av.textContent = [...r.artist.replace(/^the\s+/i,"")][0]?.toUpperCase() || "?";
@@ -628,19 +830,21 @@ function renderRound(r){
 
 function selectTile(i){
   const r=game?.current; if(!r) return;
-  playTile(i);
+  if(r.mode!=="artist") playTile(i);
   if(r.picked) return;
   r.sel = i;
   [...$("options").children].forEach(o=>o.classList.toggle("sel", +o.dataset.i===i));
   $("options").classList.add("has-sel");
   $("confirmBtn").disabled = false;
   $("selHint").innerHTML = `Ausgewählt: <b style="color:var(--text)">${esc(r.options[i].name)}</b>`;
+  if(r.mode==="artist") $("selHint").innerHTML += " · Song nochmal hören mit ▶ oben";
 }
 
 function pick(i){
   const r=game.current, chosen=r.options[i];
   if(r.picked) return;
   if(mp && mp.started) return mpSubmit(i);
+  if(r.mode==="artist") return resolveArtistSolo(i);
   r.picked = true;
   const rank = r.ranked.indexOf(chosen)+1;
   const pts = rank===1 ? 100 + game.streak*20 : rank===2 ? 40 : rank===3 ? 20 : 0;
@@ -693,8 +897,10 @@ function endGame(){
   show("end");
   const hits = game.history.filter(h=>h.rank===1).length;
   $("endScore").textContent = game.score;
-  $("endSub").textContent = `${hits} von ${game.history.length} Hits richtig erkannt · längste Serie: ${game.best}`;
-  $("summary").innerHTML = game.history.map(h=>`
+  $("endSub").textContent = `${hits} von ${game.history.length} ${S.mode==="artist"?"Künstler":"Hits"} richtig erkannt · längste Serie: ${game.best}`;
+  $("summary").innerHTML = game.history.map(h=> h.mode==="artist" ? `
+    <div class="sumrow"><span><b>${esc(h.artist)}</b> · ${esc(h.top)}</span>
+    <span class="${h.ok?"ok":"no"}">${h.ok?"✓ richtig":"✗ "+esc(h.pick)}</span></div>` : `
     <div class="sumrow"><span><b>${esc(h.artist)}</b> · ${esc(h.top)} <span style="color:var(--muted)">(${short(h.topStreams)})</span></span>
     <span class="${h.rank===1?"ok":h.rank<=3?"mid":"no"}">${h.rank===1?"✓ richtig":"Platz "+h.rank}</span></div>`).join("");
 }
@@ -731,7 +937,7 @@ function mpErr(msg){ const el = !$("lobby").classList.contains("hidden") ? $("lo
 
 function settingsText(){
   const cats = Object.entries(S.cats).map(([k,v])=>(v==="only"?"nur ":"ohne ")+CATS[k]).join(", ");
-  return [S.langs.map(l=>LANGS[l]).join(", "), "ab "+short(S.min)+" Hörer", DIFFS[S.diff].label, S.rounds+" Runden", cats].filter(Boolean).join(" · ");
+  return [(S.mode==="artist"?"🎤 Wer singt das?":"🏆 Größter Hit"), S.langs.map(l=>LANGS[l]).join(", "), "ab "+short(S.min)+" Hörer", DIFFS[S.diff].label, S.rounds+" Runden", cats].filter(Boolean).join(" · ");
 }
 
 /* --- Host --- */
@@ -815,15 +1021,27 @@ function mpStart(){
   game = {round:0, total:Math.min(S.rounds, n), score:0, streak:0, best:0, used:new Set(), history:[]};
   mpNextRound();
 }
-function mpNextRound(){
+async function mpNextRound(){
   stopAudio();
+  if(game.loading) return;
   game.round++;
-  const r = game.round<=game.total ? buildRound() : null;
+  let r = null;
+  if(game.round<=game.total){
+    if(S.mode==="artist"){
+      showLoading("Suche einen Song …"); $("mpBar").classList.add("hidden");
+      broadcast({t:"loading"});
+      game.loading=true; const g=game; r = await buildArtistRound(); g.loading=false;
+      if(!mp || game!==g) return;
+    } else r = buildRound();
+  }
   if(!r){ return mpFinish(); }
   game.current = r;
   mp.picks = new Map(); mp.revealed = false;
-  const pub = {artist:r.artist, artistId:r.artistId, listeners:r.listeners, lang:r.lang, cats:r.cats,
-               options:r.options.map(o=>({name:o.name, id:o.id}))};
+  const pub = r.mode==="artist"
+    ? {mode:"artist", preview:r.preview, showTitle:r.showTitle, song:r.showTitle?{name:r.song.name}:null,
+       options:r.options.map(o=>({name:o.name, id:o.id}))}
+    : {artist:r.artist, artistId:r.artistId, listeners:r.listeners, lang:r.lang, cats:r.cats,
+       options:r.options.map(o=>({name:o.name, id:o.id}))};
   const msg = {t:"round", n:game.round, total:game.total, dur:mp.timer, round:pub, players:publicPlayers()};
   broadcast(msg);
   mpShowRound(r, msg);
@@ -837,14 +1055,17 @@ function mpReveal(){
   if(!mp || mp.revealed) return;
   mp.revealed = true; clearTimeout(mp.revealTimer);
   const r = game.current;
+  const artist = r.mode==="artist";
   const results = mp.players.map(p=>{
     const idx = mp.picks.has(p.id) ? mp.picks.get(p.id) : null;
-    const rank = idx==null ? null : r.ranked.indexOf(r.options[idx])+1;
-    const pts = rank===1 ? 100 + p.streak*20 : rank===2 ? 40 : rank===3 ? 20 : 0;
+    const rank = idx==null ? null : artist ? (idx===r.correct ? 1 : 0) : r.ranked.indexOf(r.options[idx])+1;
+    const pts = rank===1 ? 100 + p.streak*20 : (!artist && rank===2) ? 40 : (!artist && rank===3) ? 20 : 0;
     p.streak = rank===1 ? p.streak+1 : 0; p.best=Math.max(p.best,p.streak); p.score += pts;
     return {id:p.id, name:p.name, score:p.score, streak:p.streak, delta:pts, rank, pick:idx};
   });
-  const msg = {t:"reveal", n:game.round, streams:r.options.map(o=>o.streams), results, last:game.round>=game.total};
+  const msg = artist
+    ? {t:"reveal", mode:"artist", n:game.round, correct:r.correct, song:r.song, artist:r.artist, listeners:r.options.map(o=>o.listeners), results, last:game.round>=game.total}
+    : {t:"reveal", n:game.round, streams:r.options.map(o=>o.streams), results, last:game.round>=game.total};
   broadcast(msg);
   mpApplyReveal(msg);
 }
@@ -895,6 +1116,7 @@ function guestOnData(d){
                    game.current = {...d.round, options:d.round.options.map(o=>({...o}))};
                    mpShowRound(game.current, d); break;
     case "status": mp.players=d.players; renderMpPlayers(d.players, d.answered); break;
+    case "loading": stopAudio(); showLoading("Der Host sucht den nächsten Song …"); $("mpBar").classList.add("hidden"); break;
     case "reveal": mp.revealed=true; mpApplyReveal(d); break;
     case "end":    mpShowEnd(d); break;
     case "busy":   mpLost("Das Spiel in diesem Raum läuft schon. Warte, bis die Runde vorbei ist."); break;
@@ -998,26 +1220,37 @@ function mpSubmit(i){
 function mpApplyReveal(d){
   clearInterval(timerInt); $("mpTimer").classList.add("hidden");
   const r=game.current;
-  if(mp.role!=="host"){ d.streams.forEach((s,k)=>r.options[k].streams=s); r.ranked=[...r.options].sort((x,y)=>y.streams-x.streams); }
+  const artist = d.mode==="artist";
+  if(mp.role!=="host"){
+    if(artist){ r.correct=d.correct; r.song=d.song; r.artist=d.artist; d.listeners.forEach((l,k)=>r.options[k].listeners=l); }
+    else { d.streams.forEach((s,k)=>r.options[k].streams=s); r.ranked=[...r.options].sort((x,y)=>y.streams-x.streams); }
+  }
   r.picked = true;
   $("confirmBtn").classList.remove("hidden");
   const me = d.results.find(x=>x.id===mp.myId) || {};
   const who = {};
   for(const x of d.results) if(x.pick!=null) (who[x.pick]=who[x.pick]||[]).push({name:x.name, me:x.id===mp.myId});
-  revealTiles(r, me.pick ?? undefined, who);
+  if(artist) revealArtistTiles(r, me.pick ?? undefined, who); else revealTiles(r, me.pick ?? undefined, who);
   const v=$("verdict");
-  if(me.rank===1){ v.className="verdict good"; v.textContent=`Richtig! +${me.delta} Punkte`+(me.streak>1?` · ${me.streak}er-Streak 🔥`:""); }
+  if(artist){
+    if(me.rank===1){ v.className="verdict good"; v.textContent=`Richtig! +${me.delta} Punkte`+(me.streak>1?` · ${me.streak}er-Streak 🔥`:""); }
+    else if(me.pick!=null){ v.className="verdict bad"; v.textContent=`Leider falsch – das war ${r.artist}.`; }
+    else { v.className="verdict bad"; v.textContent=`Keine Antwort – das war ${r.artist}.`; }
+    $("verdictSub").textContent="";
+  }
+  else if(me.rank===1){ v.className="verdict good"; v.textContent=`Richtig! +${me.delta} Punkte`+(me.streak>1?` · ${me.streak}er-Streak 🔥`:""); }
   else if(me.rank && me.rank<=3){ v.className="verdict mid"; v.textContent=`Knapp daneben: Platz ${me.rank}. +${me.delta} Punkte`; }
   else if(me.rank){ v.className="verdict bad"; v.textContent=`Leider falsch, dein Song ist auf Platz ${me.rank}.`; }
   else { v.className="verdict bad"; v.textContent="Keine Antwort abgegeben."; }
-  $("verdictSub").textContent = `Der größte Hit ist „${r.ranked[0].name}“ mit ${fmt(r.ranked[0].streams)} Streams auf Spotify.`;
+  if(!artist) $("verdictSub").textContent = `Der größte Hit ist „${r.ranked[0].name}“ mit ${fmt(r.ranked[0].streams)} Streams auf Spotify.`;
   const sorted=[...d.results].sort((a,b)=>b.score-a.score);
-  $("mpBoard").innerHTML = sorted.map((x,k)=>`<div class="brow ${x.id===mp.myId?"me":""}"><span class="pos">${k+1}.</span><span>${esc(x.name)}${x.rank?` <span class="hint" style="margin:0">· Platz ${x.rank}</span>`:` <span class="hint" style="margin:0">· keine Antwort</span>`}</span><span class="d ${x.delta?"plus":""}">${x.delta?"+"+x.delta:"±0"}</span><span class="pts">${x.score}</span></div>`).join("");
+  const label = x => x.pick==null ? "keine Antwort" : artist ? (x.rank===1?"richtig":"falsch") : "Platz "+x.rank;
+  $("mpBoard").innerHTML = sorted.map((x,k)=>`<div class="brow ${x.id===mp.myId?"me":""}"><span class="pos">${k+1}.</span><span>${esc(x.name)} <span class="hint" style="margin:0">· ${label(x)}</span></span><span class="d ${x.delta?"plus":""}">${x.delta?"+"+x.delta:"±0"}</span><span class="pts">${x.score}</span></div>`).join("");
   $("mpBoard").classList.remove("hidden");
   $("result").classList.remove("hidden");
   renderMpPlayers(d.results, []);
   $("hScore").textContent = me.score ?? 0;
-  if(mp.role==="host"){ $("nextBtn").textContent = d.last ? "Endstand anzeigen →" : "Nächster Künstler →"; $("nextBtn").classList.remove("hidden"); }
+  if(mp.role==="host"){ $("nextBtn").textContent = d.last ? "Endstand anzeigen →" : (artist ? "Nächster Song →" : "Nächster Künstler →"); $("nextBtn").classList.remove("hidden"); }
   else $("waitHost").classList.remove("hidden");
 }
 function mpShowEnd(d){
@@ -1047,6 +1280,8 @@ $("copyLink").onclick=async()=>{
 window.addEventListener("beforeunload", ()=>{ if(mp) try{ mpLeave(); }catch(e){} });
 
 $("startBtn").onclick=startGame;
+for(const b of document.querySelectorAll("#modePills .mode")) b.onclick=()=>{ S.mode=b.dataset.mode; save(); renderSetup(); };
+$("sPlay").onclick=()=>{ const btn=$("sPlay"); if(playingBtn===btn && !audio.paused) { audio.currentTime=0; audio.play().catch(()=>{}); } else playSongPanel(); };
 $("nextBtn").onclick=()=>{ if(mp && mp.role==="host" && mp.started){ game.round>=game.total ? mpFinish() : mpNextRound(); } else nextRound(); };
 $("confirmBtn").onclick=()=>{ const r=game?.current; if(r && !r.picked && r.sel!=null) pick(r.sel); };
 $("quitBtn").onclick=()=>{ if(mp) return mpLeave(); stopAudio(); if(game && game.history.length) { game.total=game.history.length; endGame(); } else { game=null; show("setup"); } };
