@@ -59,35 +59,80 @@
   .artist .meta{color:var(--muted);font-size:14px;margin-top:6px}
   .artist h2{font-size:32px;letter-spacing:-.5px}
   .q{font-size:15px;color:var(--muted);margin-bottom:14px}
-  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  @media (max-width:640px){.grid{grid-template-columns:1fr} h1{font-size:32px}}
-  .opt{position:relative;display:flex;align-items:stretch;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:14px;
-    transition:.15s;overflow:hidden;min-height:68px}
-  .opt:hover:not(.done){border-color:var(--accent2);transform:translateY(-1px)}
-  .opt .choose{flex:1;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:14px 16px 14px 6px;cursor:pointer;position:relative;z-index:1}
-  .opt.done .choose{cursor:default}
-  .opt .play{flex:none;width:54px;background:none;border:0;color:var(--text);cursor:pointer;position:relative;z-index:2;display:grid;place-items:center}
-  .opt .play span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:13px;transition:.15s}
-  .opt .play:hover span{background:var(--accent);color:#04120a}
-  .opt .play.playing span{background:var(--accent);color:#04120a}
-  .opt .play.loading span{animation:pulse 1s ease infinite}
-  .opt .play:disabled{cursor:not-allowed;opacity:.35}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media (max-width:760px){.grid{grid-template-columns:repeat(2,1fr)} h1{font-size:32px}}
+  .tile{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;cursor:pointer;background:var(--panel2);
+    border:2px solid transparent;transition:transform .15s, border-color .15s, box-shadow .15s, opacity .3s;outline:none}
+  .tile .cover{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .4s}
+  .tile .cover.ph{display:grid;place-items:center;font:700 34px "Space Grotesk";color:rgba(255,255,255,.85)}
+  .tile:hover:not(.done) .cover{transform:scale(1.05)}
+  .tile:hover:not(.done){border-color:rgba(124,92,255,.7)}
+  .tile:focus-visible{border-color:var(--accent2)}
+  .tile .shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.35) 45%,rgba(0,0,0,0) 70%);pointer-events:none}
+  .tile .t{position:absolute;left:10px;right:10px;bottom:10px;font-weight:600;font-size:14px;line-height:1.25;text-shadow:0 1px 4px rgba(0,0,0,.6);
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+  .tile .num{position:absolute;left:8px;top:8px;width:24px;height:24px;border-radius:7px;background:rgba(0,0,0,.55);font:600 12px "Space Grotesk";
+    display:grid;place-items:center;color:rgba(255,255,255,.8);backdrop-filter:blur(4px)}
+  .tile .play{position:absolute;right:8px;top:8px;width:40px;height:40px;border:0;padding:0;background:none;cursor:pointer;z-index:2}
+  .tile .play span{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.6);color:#fff;font-size:13px;
+    backdrop-filter:blur(6px);transition:.15s}
+  .tile .play:hover span,.tile .play.playing span{background:var(--accent);color:#04120a}
+  .tile .play.loading span{animation:pulse 1s ease infinite}
+  .tile .play:disabled{cursor:not-allowed;opacity:.4}
   @keyframes pulse{50%{opacity:.4}}
-  .opt .prog{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);width:0;z-index:3}
-  .opt .t{font-weight:600;position:relative;z-index:1;padding-right:64px;word-break:break-word}
+  .tile .prog{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);width:0;z-index:3}
+  .tile.sel{border-color:var(--accent);box-shadow:0 0 0 3px rgba(30,215,96,.35),0 12px 30px rgba(0,0,0,.45);transform:translateY(-3px)}
+  .tile.sel .num{background:var(--accent);color:#04120a}
+  .tile.sel .num::after{content:"✓"} .tile.sel .num b{display:none}
+  .grid.has-sel .tile:not(.sel){opacity:.6}
+  .grid.has-sel .tile:not(.sel):hover{opacity:.9}
+  .confirm-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;flex-wrap:wrap}
+  .confirm-row .hint{margin:0}
+  /* Auflösung */
+  .tile.done{cursor:default;opacity:.75}
+  .tile.done.correct,.tile.done.wrong{opacity:1}
+  .tile.correct{border-color:var(--accent);box-shadow:0 0 0 3px rgba(30,215,96,.35)}
+  .tile.wrong{border-color:var(--bad);box-shadow:0 0 0 3px rgba(255,77,109,.3)}
+  .tile .rk{position:absolute;left:8px;top:8px;min-width:34px;height:28px;padding:0 8px;border-radius:8px;background:rgba(0,0,0,.65);
+    font:700 14px "Space Grotesk";display:grid;place-items:center;backdrop-filter:blur(4px)}
+  .tile.correct .rk{background:var(--accent);color:#04120a}
+  .tile.wrong .rk{background:var(--bad);color:#fff}
+  .tile .st{font:700 15px "Space Grotesk";color:#fff;margin-top:4px}
+  .tile .st small{font:500 11px Inter;color:rgba(255,255,255,.7)}
+  .tile .sbar{position:absolute;left:0;bottom:0;height:5px;width:0;background:rgba(255,255,255,.55);transition:width .9s cubic-bezier(.2,.8,.2,1);z-index:2}
+  .tile.correct .sbar{background:var(--accent)} .tile.wrong .sbar{background:var(--bad)}
+  .tile .sp{position:absolute;right:56px;top:14px;font-size:11.5px;color:#fff;text-decoration:none;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:999px;z-index:2}
+  .tile .sp:hover{background:var(--accent);color:#04120a}
+  .tile.reveal-label .t{bottom:12px}
   .vol{display:flex;align-items:center;gap:8px}
   .vol input{width:90px;accent-color:var(--accent)}
   .avatar{background-size:cover!important;background-position:center!important}
-  .opt .pc{position:absolute;right:14px;top:50%;transform:translateY(-50%);font:600 13px "Space Grotesk";color:var(--muted);z-index:1}
-  .opt .rank{font-size:12px;color:var(--muted);position:relative;z-index:1;margin-top:4px}
-  .opt .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(124,92,255,.14);width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
-  .opt.correct{border-color:var(--accent);background:rgba(30,215,96,.08)}
-  .opt.correct .bar{background:rgba(30,215,96,.22)}
-  .opt.wrong{border-color:var(--bad)}
-  .opt.wrong .bar{background:rgba(255,77,109,.2)}
-  .opt .sp{position:relative;z-index:1;font-size:12px;color:#9fe8bb;text-decoration:none;display:inline-block;margin-top:6px}
-  .opt .sp:hover{text-decoration:underline}
   .verdict{margin:18px 0 6px;font:700 22px "Space Grotesk"}
+  /* Mehrspieler */
+  .mpbox{margin-top:28px;padding:20px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(30,215,96,.05))}
+  .mpbox .l{margin-top:0}
+  .txt{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:12px 16px;font:inherit;outline:none}
+  .txt:focus{border-color:var(--accent2)}
+  .code{font:700 64px "Space Grotesk";letter-spacing:.18em;color:var(--accent);line-height:1;margin:6px 0 14px}
+  .players{display:flex;flex-wrap:wrap;gap:8px}
+  .pchip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:14px;display:flex;align-items:center;gap:6px}
+  .pchip.me{border-color:var(--accent2)}
+  .pchip.done{border-color:var(--accent);background:rgba(30,215,96,.12)}
+  .pchip .ok{color:var(--accent);font-weight:700}
+  .pchip .host{font-size:11px;color:var(--muted)}
+  .mpbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:-4px 0 16px}
+  .timer{font:700 20px "Space Grotesk";min-width:64px;text-align:center;padding:6px 14px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+  .timer.low{color:var(--bad);border-color:var(--bad)}
+  .board{display:grid;gap:8px;margin-top:16px}
+  .brow{display:grid;grid-template-columns:36px 1fr auto auto;gap:12px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+  .brow.me{border-color:var(--accent2)}
+  .brow .pos{font:700 18px "Space Grotesk";color:var(--muted)}
+  .brow .pts{font:700 18px "Space Grotesk"}
+  .brow .d{font-size:13px;color:var(--muted);min-width:70px;text-align:right}
+  .brow .d.plus{color:var(--accent)}
+  .tile .who{position:absolute;left:8px;top:42px;right:56px;display:flex;flex-wrap:wrap;gap:4px;z-index:2}
+  .tile .who span{font-size:11px;font-weight:600;background:rgba(124,92,255,.9);color:#fff;padding:2px 7px;border-radius:999px}
+  .tile .who span.me{background:#fff;color:#111}
   .verdict.good{color:var(--accent)} .verdict.mid{color:var(--warn)} .verdict.bad{color:var(--bad)}
   .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
   .loader{display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 0;color:var(--muted)}
@@ -108,7 +153,7 @@
     <div class="hud hidden" id="hud">
       <div class="chip">Runde <b id="hRound">1</b>/<b id="hTotal">10</b></div>
       <div class="chip">Punkte <b id="hScore">0</b></div>
-      <div class="chip">Streak <b id="hStreak">0</b>🔥</div>
+      <div class="chip" id="hStreakChip">Streak <b id="hStreak">0</b>🔥</div>
       <div class="chip vol" title="Lautstärke">🔊 <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></div>
     </div>
   </header>
@@ -147,11 +192,53 @@
       <div class="hint">Hörproben: 30 Sekunden direkt in der Karte. Spotify: der echte Spotify-Player unter den Songs. Bist du im Browser bei Spotify eingeloggt, laufen die Songs dort komplett.</div>
 
       <div class="row" style="margin-top:24px">
-        <button class="btn" id="startBtn">Spiel starten</button>
+        <button class="btn" id="startBtn">Allein spielen</button>
       </div>
+    </div>
+
+    <div class="mpbox" id="mpBox">
+      <label class="l">Mit Freunden spielen</label>
+      <div class="row">
+        <input class="txt" id="mpName" placeholder="Dein Name" maxlength="16" autocomplete="nickname" style="flex:1;min-width:180px">
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="hostBtn">Raum erstellen</button>
+        <span class="hint" style="margin:0">oder</span>
+        <input class="txt" id="joinCode" placeholder="CODE" maxlength="5" autocomplete="off" spellcheck="false" style="width:130px;text-transform:uppercase;letter-spacing:.25em;text-align:center">
+        <button class="btn ghost" id="joinBtn">Beitreten</button>
+      </div>
+      <div class="hint">Wer den Raum erstellt, ist Host: Für alle gelten dann die Einstellungen oben. Freunde treten mit dem 5-stelligen Code oder dem Einladungslink bei. Bis zu 8 Spieler.</div>
     </div>
     <div class="err" id="setupErr"></div>
     <div class="hint" id="dataInfo" style="margin-top:14px"></div>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="lobby" class="card hidden">
+    <div class="hint" style="text-transform:uppercase;letter-spacing:.08em;margin:0">Raumcode</div>
+    <div class="code" id="lobbyCode">-----</div>
+    <div class="row">
+      <button class="btn ghost" id="copyLink">Einladungslink kopieren</button>
+      <span class="hint" id="copyMsg" style="margin:0"></span>
+    </div>
+    <div class="hint" id="lobbyLink" style="word-break:break-all"></div>
+    <label class="l">Spieler</label>
+    <div class="players" id="lobbyPlayers"></div>
+    <label class="l">Einstellungen</label>
+    <div class="hint" id="lobbySettings" style="margin:0"></div>
+    <div id="lobbyHost">
+      <label class="l">Zeit pro Runde</label>
+      <div class="pills" id="timerPills"></div>
+      <div class="row" style="margin-top:22px">
+        <button class="btn" id="mpStartBtn">Spiel starten</button>
+        <button class="btn ghost" id="lobbyLeave">Raum schließen</button>
+      </div>
+    </div>
+    <div id="lobbyGuest" class="hidden">
+      <p class="sub">Warte, bis der Host das Spiel startet …</p>
+      <div class="row" style="margin-top:14px"><button class="btn ghost" id="lobbyLeave2">Raum verlassen</button></div>
+    </div>
+    <div class="err" id="lobbyErr"></div>
   </section>
 
   <!-- ROUND -->
@@ -163,15 +250,22 @@
         <div class="meta" id="artistMeta"></div>
       </div>
     </div>
-    <div class="q">Welcher dieser Songs hat die meisten Streams auf Spotify? Mit ▶ hörst du rein.</div>
+    <div class="q">Welcher dieser Songs hat die meisten Streams auf Spotify? Mit ▶ hörst du rein, Cover antippen zum Auswählen.</div>
+    <div class="mpbar hidden" id="mpBar"><div class="players" id="mpPlayers"></div><div class="timer hidden" id="mpTimer">30</div></div>
     <div class="grid" id="options"></div>
+    <div class="confirm-row" id="confirmRow">
+      <span class="hint" id="selHint">Tippe auf ein Cover, um es auszuwählen.</span>
+      <button class="btn" id="confirmBtn" disabled>Auswahl bestätigen</button>
+    </div>
     <div id="spotifyBox" class="hidden" style="margin-top:14px"></div>
     <div id="result" class="hidden">
       <div class="verdict" id="verdict"></div>
       <div class="hint" id="verdictSub"></div>
+      <div class="board hidden" id="mpBoard"></div>
     </div>
     <div class="foot">
       <button class="btn ghost" id="quitBtn">Beenden</button>
+      <span class="hint hidden" id="waitHost" style="margin:0">Warte auf den Host …</span>
       <button class="btn hidden" id="nextBtn">Nächster Künstler →</button>
     </div>
   </section>
@@ -181,6 +275,7 @@
     <div class="hint" style="text-transform:uppercase;letter-spacing:.08em">Endstand</div>
     <div class="big" id="endScore">0</div>
     <p class="sub" id="endSub"></p>
+    <div class="board hidden" id="endBoard"></div>
     <div class="summary" id="summary"></div>
     <div class="row" style="margin-top:22px">
       <button class="btn" id="againBtn">Nochmal mit gleichen Einstellungen</button>
@@ -298,7 +393,7 @@ function renderSetup(){
   $("startBtn").disabled = n===0;
 }
 
-function show(id){ ["setup","round","end"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); $("hud").classList.toggle("hidden", id==="setup"); }
+function show(id){ ["setup","lobby","round","end"].forEach(s=>$(s).classList.toggle("hidden", s!==id)); $("hud").classList.toggle("hidden", id==="setup"||id==="lobby"); }
 
 /* ---------- Hörproben (Deezer, Fallback iTunes) ---------- */
 const normTitle = s => s.toLowerCase()
@@ -340,13 +435,23 @@ function findPreview(artist, title){
   })();
   return previewCache[k];
 }
+const oembedCache = {};
+function spotifyThumb(kind, id){
+  const k=kind+":"+id;
+  if(!oembedCache[k]) oembedCache[k] = fetch("https://open.spotify.com/oembed?url="+encodeURIComponent(`https://open.spotify.com/${kind}/${id}`))
+    .then(r=>r.ok?r.json():null).then(j=>j?.thumbnail_url||null).catch(()=>null);
+  return oembedCache[k];
+}
 const pictureCache = {};
-function findPicture(artist){
-  if(!pictureCache[artist]) pictureCache[artist] = jsonp("https://api.deezer.com/search/artist?output=jsonp&q="+encodeURIComponent(artist))
+function findPicture(artist, artistId){
+  if(artistId && !pictureCache[artist]) pictureCache[artist] = spotifyThumb("artist", artistId).then(u=>u || deezerPicture(artist));
+  return pictureCache[artist] || (pictureCache[artist] = deezerPicture(artist));
+}
+function deezerPicture(artist){
+  return jsonp("https://api.deezer.com/search/artist?output=jsonp&q="+encodeURIComponent(artist))
     .then(d=>{ const l=d.data||[]; const a=l.find(x=>normName(x.name)===normName(artist)) || l.find(x=>artistMatch(x.name,artist));
       return a && a.picture_medium && !/\/artist\/\/|images\/artist\/?$/.test(a.picture_medium) ? a.picture_medium : null; })
     .catch(()=>null);
-  return pictureCache[artist];
 }
 
 /* ---------- Player: Hörproben ---------- */
@@ -435,6 +540,8 @@ function buildRound(){
 /* ---------- Spielablauf ---------- */
 function startGame(){
   $("setupErr").textContent="";
+  if(mp) mpLeave();
+  resetMpUi();
   if(!DATA){ $("setupErr").textContent="Es sind noch keine Spotify-Daten geladen."; return; }
   if(!S.langs.length){ $("setupErr").textContent="Wähle mindestens eine Sprache."; return; }
   const n=pool().length;
@@ -465,7 +572,7 @@ function renderRound(r){
   $("round").classList.remove("pop"); void $("round").offsetWidth; $("round").classList.add("pop");
   const av=$("avatar"); av.setAttribute("style", avatarStyle(r.artist));
   av.textContent = [...r.artist.replace(/^the\s+/i,"")][0]?.toUpperCase() || "?";
-  findPicture(r.artist).then(url=>{
+  findPicture(r.artist, r.artistId).then(url=>{
     if(!url || game?.current!==r) return;
     const img=new Image(); img.onload=()=>{ if(game?.current!==r) return; av.style.background=`url("${url}")`; av.textContent=""; }; img.src=url;
   });
@@ -473,22 +580,44 @@ function renderRound(r){
   $("artistMeta").innerHTML = `${esc(short(r.listeners))} monatliche Hörer · ${esc(LANGS[r.lang])}${r.cats.filter(c=>c!=="none").length? " · "+esc(r.cats.filter(c=>c!=="none").map(c=>CATS[c]).join(", ")):""} · <a href="https://open.spotify.com/artist/${r.artistId}" target="_blank" rel="noopener" style="color:#9fe8bb">Spotify-Profil ↗</a>`;
   $("result").classList.add("hidden"); $("nextBtn").classList.add("hidden");
   $("spotifyBox").classList.toggle("hidden", !(S.player==="spotify" && spCtrl));
-  const box=$("options"); box.innerHTML="";
+  const box=$("options"); box.innerHTML=""; box.classList.remove("has-sel");
+  r.sel = null;
+  $("confirmRow").classList.remove("hidden");
+  $("confirmBtn").disabled = true; $("confirmBtn").classList.remove("hidden");
+  $("selHint").textContent = "Tippe auf ein Cover, um es auszuwählen.";
   r.options.forEach((t,i)=>{
-    const o=document.createElement("div"); o.className="opt"; o.dataset.i=i;
-    o.innerHTML = `<div class="bar"></div><div class="prog"></div>
+    const o=document.createElement("div"); o.className="tile"; o.dataset.i=i; o.tabIndex=0;
+    o.setAttribute("role","button"); o.setAttribute("aria-label", t.name);
+    o.innerHTML = `<div class="cover ph" style="${avatarStyle(t.name)}">♪</div><div class="shade"></div>
+      <div class="num"><b>${i+1}</b></div>
       <button class="play" title="Reinhören"><span>▶</span></button>
-      <button class="choose"><div class="t">${esc(t.name)}</div></button>`;
-    o.querySelector(".play").onclick=e=>onPlay(e.currentTarget, r.artist, t);
-    o.querySelector(".choose").onclick=()=>pick(i);
+      <div class="t">${esc(t.name)}</div><div class="prog"></div>`;
+    o.querySelector(".play").onclick=e=>{ e.stopPropagation(); onPlay(e.currentTarget, r.artist, t); };
+    o.onclick=()=>selectTile(i);
+    o.onkeydown=e=>{ if(e.key===" "&&e.target===o){ e.preventDefault(); selectTile(i); } };
     box.appendChild(o);
+    spotifyThumb("track", t.id).then(url=>{
+      if(!url || game?.current!==r) return;
+      const img=new Image(); img.onload=()=>{ if(game?.current!==r) return; const c=o.querySelector(".cover");
+        c.classList.remove("ph"); c.textContent=""; c.setAttribute("style",`background-image:url("${url}")`); }; img.src=url;
+    });
     if(S.player==="preview") findPreview(r.artist, t.name);   // im Hintergrund vorladen
   });
+}
+
+function selectTile(i){
+  const r=game?.current; if(!r || r.picked) return;
+  r.sel = i;
+  [...$("options").children].forEach(o=>o.classList.toggle("sel", +o.dataset.i===i));
+  $("options").classList.add("has-sel");
+  $("confirmBtn").disabled = false;
+  $("selHint").innerHTML = `Ausgewählt: <b style="color:var(--text)">${esc(r.options[i].name)}</b>`;
 }
 
 function pick(i){
   const r=game.current, chosen=r.options[i];
   if(r.picked) return;
+  if(mp && mp.started) return mpSubmit(i);
   r.picked = true;
   const rank = r.ranked.indexOf(chosen)+1;
   const pts = rank===1 ? 100 + game.streak*20 : rank===2 ? 40 : rank===3 ? 20 : 0;
@@ -497,21 +626,7 @@ function pick(i){
   game.score += pts;
   game.history.push({artist:r.artist, pick:chosen.name, top:r.ranked[0].name, topStreams:r.ranked[0].streams, rank, pts});
 
-  const max = r.ranked[0].streams;
-  [...$("options").children].forEach((o,j)=>{
-    const t=r.options[j], tr=r.ranked.indexOf(t)+1;
-    o.classList.add("done");
-    if(tr===1) o.classList.add("correct");
-    if(j===i && tr!==1) o.classList.add("wrong");
-    const c=document.createElement("div"); c.className="choose";
-    o.querySelector(".choose").replaceWith(c);
-    c.innerHTML = `<div class="t">${esc(t.name)}</div>
-      <div class="rank">Platz ${tr} · ${fmt(t.streams)} Streams</div>
-      <a class="sp" href="https://open.spotify.com/track/${t.id}" target="_blank" rel="noopener">Auf Spotify öffnen ↗</a>
-      <div class="pc">${short(t.streams)}</div>`;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{ o.querySelector(".bar").style.width=(t.streams/max*100)+"%"; }));
-  });
-  const box=$("options"); [...box.children].sort((a,b)=> r.ranked.indexOf(r.options[a.dataset.i]) - r.ranked.indexOf(r.options[b.dataset.i])).forEach(n=>box.appendChild(n));
+  revealTiles(r, i, null);
 
   const v=$("verdict");
   if(rank===1){ v.className="verdict good"; v.textContent = `Richtig! +${pts} Punkte`+(game.streak>1?` · ${game.streak}er-Streak 🔥`:""); }
@@ -522,6 +637,28 @@ function pick(i){
   $("nextBtn").textContent = game.round>=game.total ? "Ergebnis ansehen →" : "Nächster Künstler →";
   $("nextBtn").classList.remove("hidden");
   updateHud();
+}
+
+// Kacheln auflösen: Platz, Streams, Balken; who = {Optionsindex: [Namen]} im Mehrspieler
+function revealTiles(r, i, who){
+  const max = r.ranked[0].streams;
+  $("confirmRow").classList.add("hidden");
+  $("options").classList.remove("has-sel");
+  [...$("options").children].forEach(o=>{
+    const j=+o.dataset.i, t=r.options[j], tr=r.ranked.indexOf(t)+1;
+    o.classList.remove("sel"); o.classList.add("done");
+    o.onclick=null; o.removeAttribute("tabindex");
+    if(tr===1) o.classList.add("correct");
+    if(j===i && tr!==1) o.classList.add("wrong");
+    o.querySelector(".num").outerHTML = `<div class="rk">#${tr}</div>`;
+    o.querySelector(".t").innerHTML = `${esc(t.name)}<div class="st">${short(t.streams)} <small>Streams</small></div>`;
+    o.querySelector(".t").title = fmt(t.streams)+" Streams";
+    o.insertAdjacentHTML("beforeend", `<a class="sp" href="https://open.spotify.com/track/${t.id}" target="_blank" rel="noopener" title="Auf Spotify öffnen">Spotify ↗</a><div class="sbar"></div>`);
+    if(who && who[j]?.length) o.insertAdjacentHTML("beforeend", `<div class="who">${who[j].map(n=>`<span class="${n.me?"me":""}">${esc(n.name)}</span>`).join("")}</div>`);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ o.querySelector(".sbar").style.width=(t.streams/max*100)+"%"; }));
+  });
+  const box=$("options"); [...box.children].sort((a,b)=> r.ranked.indexOf(r.options[a.dataset.i]) - r.ranked.indexOf(r.options[b.dataset.i])).forEach(n=>box.appendChild(n));
+
 }
 
 function updateHud(){
@@ -539,20 +676,375 @@ function endGame(){
     <span class="${h.rank===1?"ok":h.rank<=3?"mid":"no"}">${h.rank===1?"✓ richtig":"Platz "+h.rank}</span></div>`).join("");
 }
 
+/* ---------- Mehrspieler (PeerJS, Host verteilt die Runden) ---------- */
+const MP_PREFIX = "toptrack-v1-";
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const TIMERS = [[0,"ohne"],[20,"20 s"],[30,"30 s"],[45,"45 s"],[60,"60 s"]];
+const MAX_PLAYERS = 8;
+let mp = null;
+let peerLoading = null;
+
+function loadPeer(){
+  if(window.Peer) return Promise.resolve();
+  if(!peerLoading) peerLoading = new Promise((res,rej)=>{
+    const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js";
+    s.onload=res; s.onerror=()=>{ peerLoading=null; rej(new Error("Die Mehrspieler-Bibliothek konnte nicht geladen werden. Prüfe deine Internetverbindung.")); };
+    document.head.appendChild(s);
+  });
+  return peerLoading;
+}
+function openPeer(id){
+  return new Promise((res,rej)=>{
+    const p = id ? new Peer(id) : new Peer();
+    const t=setTimeout(()=>{ try{p.destroy();}catch(e){} rej(Object.assign(new Error("Der Verbindungsserver antwortet nicht. Versuch es gleich nochmal."),{type:"timeout"})); }, 12000);
+    p.once("open", ()=>{ clearTimeout(t); res(p); });
+    p.once("error", e=>{ clearTimeout(t); try{p.destroy();}catch(_){} rej(e); });
+  });
+}
+const newCode = () => Array.from({length:5},()=>CODE_CHARS[rnd(CODE_CHARS.length)]).join("");
+function myName(){ const n=$("mpName").value.trim().replace(/\s+/g," ").slice(0,16); S.name=n; save(); return n || "Spieler"; }
+function inviteLink(code){ return location.origin + location.pathname + "?raum=" + code; }
+function mpErr(msg){ const el = !$("lobby").classList.contains("hidden") ? $("lobbyErr") : $("setupErr"); el.textContent = msg; }
+
+function settingsText(){
+  const cats = Object.entries(S.cats).map(([k,v])=>(v==="only"?"nur ":"ohne ")+CATS[k]).join(", ");
+  return [S.langs.map(l=>LANGS[l]).join(", "), "ab "+short(S.min)+" Hörer", DIFFS[S.diff].label, S.rounds+" Runden", cats].filter(Boolean).join(" · ");
+}
+
+/* --- Host --- */
+async function hostRoom(){
+  $("setupErr").textContent="";
+  if(!DATA){ mpErr("Es sind noch keine Spotify-Daten geladen."); return; }
+  if(!S.langs.length || !pool().length){ mpErr("Mit diesen Einstellungen gibt es keine Künstler."); return; }
+  const name = myName();
+  $("hostBtn").disabled = true;
+  try{
+    await loadPeer();
+    let peer=null, code=null;
+    for(let a=0; a<5 && !peer; a++){
+      code = newCode();
+      try{ peer = await openPeer(MP_PREFIX+code.toLowerCase()); }
+      catch(e){ if(e.type!=="unavailable-id") throw e; }
+    }
+    if(!peer) throw new Error("Konnte keinen freien Raumcode finden.");
+    mp = {role:"host", peer, code, myId:"host", conns:new Map(), started:false, timer:(S.mpTimer ?? 30),
+          players:[{id:"host", name, score:0, streak:0, best:0}], picks:new Map(), revealed:true};
+    peer.on("connection", conn=>{
+      conn.on("data", d=>hostOnData(conn,d));
+      conn.on("close", ()=>hostDrop(conn.peer));
+      conn.on("error", ()=>hostDrop(conn.peer));
+    });
+    peer.on("disconnected", ()=>{ try{ peer.reconnect(); }catch(e){} });
+    peer.on("error", e=>{ if(e.type==="network"||e.type==="server-error") mpErr("Verbindungsproblem: "+e.type); });
+    showLobby();
+  }catch(e){ mpErr(e.message || ("Fehler: "+e.type)); }
+  finally{ $("hostBtn").disabled = false; }
+}
+function uniqueName(n){
+  let base=(String(n||"").trim().slice(0,16)) || "Spieler", name=base, k=2;
+  while(mp.players.some(p=>p.name.toLowerCase()===name.toLowerCase())) name=base+" "+(k++);
+  return name;
+}
+function hostOnData(conn, d){
+  if(!mp || mp.role!=="host" || !d || typeof d!=="object") return;
+  if(d.t==="hello"){
+    if(mp.started){ conn.send({t:"busy"}); setTimeout(()=>conn.close(),300); return; }
+    if(mp.players.length>=MAX_PLAYERS){ conn.send({t:"full"}); setTimeout(()=>conn.close(),300); return; }
+    if(!mp.conns.has(conn.peer)){
+      mp.conns.set(conn.peer, conn);
+      mp.players.push({id:conn.peer, name:uniqueName(d.name), score:0, streak:0, best:0});
+    }
+    broadcastLobby();
+  } else if(d.t==="pick"){
+    if(mp.revealed || d.n!==game.round || mp.picks.has(conn.peer)) return;
+    const i=+d.i; if(!(i>=0 && i<8)) return;
+    mp.picks.set(conn.peer, i);
+    broadcastStatus(); checkAllAnswered();
+  } else if(d.t==="leave"){
+    hostDrop(conn.peer);
+  }
+}
+function hostDrop(id){
+  if(!mp || mp.role!=="host" || !mp.conns.has(id)) return;
+  try{ mp.conns.get(id).close(); }catch(e){}
+  mp.conns.delete(id);
+  mp.players = mp.players.filter(p=>p.id!==id);
+  mp.picks.delete(id);
+  if(mp.started){ broadcastStatus(); checkAllAnswered(); } else broadcastLobby();
+}
+function broadcast(msg){ for(const c of mp.conns.values()){ try{ if(c.open) c.send(msg); }catch(e){} } }
+function publicPlayers(){ return mp.players.map(p=>({id:p.id, name:p.name, score:p.score})); }
+function broadcastLobby(){
+  const msg={t:"lobby", code:mp.code, players:publicPlayers(), settings:settingsText(), timer:mp.timer};
+  broadcast(msg); if(!$("lobby").classList.contains("hidden")) renderLobby(msg);
+}
+function broadcastStatus(){
+  const msg={t:"status", players:publicPlayers(), answered:[...mp.picks.keys()]};
+  broadcast(msg); renderMpPlayers(msg.players, msg.answered);
+}
+
+function mpStart(){
+  if(!mp || mp.role!=="host") return;
+  const n=pool().length;
+  if(!n){ $("lobbyErr").textContent="Mit diesen Einstellungen gibt es keine Künstler."; return; }
+  mp.started = true;
+  for(const p of mp.players){ p.score=0; p.streak=0; p.best=0; }
+  game = {round:0, total:Math.min(S.rounds, n), score:0, streak:0, best:0, used:new Set(), history:[]};
+  mpNextRound();
+}
+function mpNextRound(){
+  stopAudio();
+  game.round++;
+  const r = game.round<=game.total ? buildRound() : null;
+  if(!r){ return mpFinish(); }
+  game.current = r;
+  mp.picks = new Map(); mp.revealed = false;
+  const pub = {artist:r.artist, artistId:r.artistId, listeners:r.listeners, lang:r.lang, cats:r.cats,
+               options:r.options.map(o=>({name:o.name, id:o.id}))};
+  const msg = {t:"round", n:game.round, total:game.total, dur:mp.timer, round:pub, players:publicPlayers()};
+  broadcast(msg);
+  mpShowRound(r, msg);
+  clearTimeout(mp.revealTimer);
+  if(mp.timer) mp.revealTimer = setTimeout(mpReveal, mp.timer*1000 + 1200);
+}
+function checkAllAnswered(){
+  if(mp && mp.role==="host" && mp.started && !mp.revealed && mp.picks.size>=mp.players.length) mpReveal();
+}
+function mpReveal(){
+  if(!mp || mp.revealed) return;
+  mp.revealed = true; clearTimeout(mp.revealTimer);
+  const r = game.current;
+  const results = mp.players.map(p=>{
+    const idx = mp.picks.has(p.id) ? mp.picks.get(p.id) : null;
+    const rank = idx==null ? null : r.ranked.indexOf(r.options[idx])+1;
+    const pts = rank===1 ? 100 + p.streak*20 : rank===2 ? 40 : rank===3 ? 20 : 0;
+    p.streak = rank===1 ? p.streak+1 : 0; p.best=Math.max(p.best,p.streak); p.score += pts;
+    return {id:p.id, name:p.name, score:p.score, streak:p.streak, delta:pts, rank, pick:idx};
+  });
+  const msg = {t:"reveal", n:game.round, streams:r.options.map(o=>o.streams), results, last:game.round>=game.total};
+  broadcast(msg);
+  mpApplyReveal(msg);
+}
+function mpFinish(){
+  const results = [...mp.players].sort((a,b)=>b.score-a.score).map(p=>({id:p.id, name:p.name, score:p.score, best:p.best}));
+  const msg={t:"end", results};
+  broadcast(msg); mpShowEnd(msg);
+}
+function mpBackToLobby(){
+  if(!mp || mp.role!=="host") return;
+  mp.started=false; mp.revealed=true; clearTimeout(mp.revealTimer);
+  for(const p of mp.players){ p.score=0; p.streak=0; p.best=0; }
+  showLobby(); broadcastLobby();
+}
+
+/* --- Gast --- */
+async function joinRoom(code){
+  $("setupErr").textContent="";
+  code = (code || $("joinCode").value).trim().toUpperCase();
+  if(!/^[A-Z0-9]{5}$/.test(code)){ mpErr("Der Code hat 5 Zeichen, z. B. K7Q2P."); return; }
+  const name = myName();
+  $("joinBtn").disabled = true;
+  try{
+    await loadPeer();
+    const peer = await openPeer();
+    const conn = peer.connect(MP_PREFIX+code.toLowerCase(), {reliable:true});
+    await new Promise((res,rej)=>{
+      const t=setTimeout(()=>rej(new Error("Raum nicht gefunden oder Host nicht erreichbar.")), 12000);
+      conn.on("open", ()=>{ clearTimeout(t); res(); });
+      peer.on("error", e=>{ clearTimeout(t); rej(new Error(e.type==="peer-unavailable" ? "Raum „"+code+"“ nicht gefunden. Stimmt der Code?" : "Verbindung fehlgeschlagen ("+e.type+").")); });
+    }).catch(e=>{ try{peer.destroy();}catch(_){} throw e; });
+    mp = {role:"guest", peer, conn, code, myId:peer.id, players:[], started:false, revealed:true};
+    conn.on("data", guestOnData);
+    conn.on("close", ()=>mpLost("Die Verbindung zum Host ist abgebrochen."));
+    peer.on("disconnected", ()=>{ try{ peer.reconnect(); }catch(e){} });
+    conn.send({t:"hello", name});
+    showLobby();
+  }catch(e){ mpErr(e.message); }
+  finally{ $("joinBtn").disabled = false; }
+}
+function guestOnData(d){
+  if(!mp || !d || typeof d!=="object") return;
+  switch(d.t){
+    case "lobby":  mp.started=false; mp.players=d.players; if($("lobby").classList.contains("hidden")) showLobby(); renderLobby(d); break;
+    case "round":  mp.started=true; mp.revealed=false; mp.players=d.players;
+                   game = game && mp.started && game.mp ? game : {mp:true, round:0, total:d.total, score:0, streak:0, best:0, used:new Set(), history:[]};
+                   game.round=d.n; game.total=d.total;
+                   game.current = {...d.round, options:d.round.options.map(o=>({...o}))};
+                   mpShowRound(game.current, d); break;
+    case "status": mp.players=d.players; renderMpPlayers(d.players, d.answered); break;
+    case "reveal": mp.revealed=true; mpApplyReveal(d); break;
+    case "end":    mpShowEnd(d); break;
+    case "busy":   mpLost("Das Spiel in diesem Raum läuft schon. Warte, bis die Runde vorbei ist."); break;
+    case "full":   mpLost("Der Raum ist voll (max. "+MAX_PLAYERS+" Spieler)."); break;
+    case "closed": mpLost("Der Host hat den Raum geschlossen."); break;
+  }
+}
+
+/* --- gemeinsam --- */
+function mpLeave(){
+  if(!mp) return;
+  const m=mp; mp=null;
+  clearTimeout(m.revealTimer); clearInterval(timerInt);
+  try{
+    if(m.role==="host"){ for(const c of m.conns.values()){ try{ c.send({t:"closed"}); }catch(e){} } }
+    else { try{ m.conn.send({t:"leave"}); }catch(e){} }
+  }catch(e){}
+  setTimeout(()=>{ try{ m.peer.destroy(); }catch(e){} }, 400);
+  stopAudio(); game=null; resetMpUi(); renderSetup(); show("setup");
+}
+function mpLost(msg){
+  if(!mp) return;
+  const m=mp; mp=null; clearInterval(timerInt);
+  try{ m.peer.destroy(); }catch(e){}
+  stopAudio(); game=null; resetMpUi(); renderSetup(); show("setup");
+  $("setupErr").textContent = msg;
+}
+function resetMpUi(){
+  $("mpBar").classList.add("hidden"); $("mpBoard").classList.add("hidden"); $("waitHost").classList.add("hidden");
+  $("endBoard").classList.add("hidden"); $("summary").classList.remove("hidden");
+  $("quitBtn").textContent="Beenden"; $("againBtn").classList.remove("hidden");
+  $("againBtn").textContent="Nochmal mit gleichen Einstellungen"; $("settingsBtn").textContent="Einstellungen";
+  $("hStreakChip").classList.remove("hidden");
+}
+function showLobby(){
+  show("lobby"); $("lobbyErr").textContent="";
+  const host = mp.role==="host";
+  $("lobbyHost").classList.toggle("hidden", !host);
+  $("lobbyGuest").classList.toggle("hidden", host);
+  $("lobbyCode").textContent = mp.code;
+  $("lobbyLink").textContent = inviteLink(mp.code);
+  $("copyMsg").textContent = "";
+  if(host){
+    renderLobby({players:publicPlayers(), settings:settingsText(), timer:mp.timer});
+    renderTimerPills();
+  } else renderLobby({players:mp.players, settings:"Werden vom Host festgelegt …", timer:null});
+}
+function renderTimerPills(){
+  pills($("timerPills"), TIMERS, v=>mp && mp.timer===v, v=>{ mp.timer=v; S.mpTimer=v; broadcastLobby(); renderTimerPills(); });
+}
+function renderLobby(d){
+  if(!mp) return;
+  $("lobbyPlayers").innerHTML = (d.players||[]).map(p=>`<div class="pchip ${p.id===mp.myId?"me":""}">${esc(p.name)}${p.id==="host"?' <span class="host">Host</span>':""}${p.id===mp.myId?' <span class="host">(du)</span>':""}</div>`).join("") || '<span class="hint">Verbinde …</span>';
+  $("lobbySettings").textContent = d.settings + (d.timer!=null ? " · "+(d.timer? d.timer+" s pro Runde":"ohne Zeitlimit") : "");
+  if(mp.role==="host"){
+    $("mpStartBtn").textContent = mp.players.length>1 ? `Spiel starten (${mp.players.length} Spieler)` : "Spiel starten (warte auf Freunde …)";
+  }
+}
+function renderMpPlayers(players, answered){
+  if(!mp) return;
+  const a=new Set(answered||[]);
+  $("mpPlayers").innerHTML = players.map(p=>`<div class="pchip ${a.has(p.id)?"done":""} ${p.id===mp.myId?"me":""}">${a.has(p.id)?'<span class="ok">✓</span>':""}${esc(p.name)} <span class="host">${p.score}</span></div>`).join("");
+}
+
+let timerInt=null;
+function mpShowRound(r, msg){
+  renderRound(r);
+  $("hTotal").textContent=msg.total; $("hRound").textContent=msg.n;
+  $("hScore").textContent = (msg.players.find(p=>p.id===mp.myId)||{}).score ?? 0;
+  $("hStreakChip").classList.add("hidden");
+  $("mpBar").classList.remove("hidden"); $("mpBoard").classList.add("hidden");
+  $("waitHost").classList.add("hidden"); $("nextBtn").classList.add("hidden");
+  $("quitBtn").textContent = mp.role==="host" ? "Raum schließen" : "Raum verlassen";
+  renderMpPlayers(msg.players, []);
+  clearInterval(timerInt);
+  const tEl=$("mpTimer");
+  if(msg.dur){
+    const end=Date.now()+msg.dur*1000;
+    tEl.classList.remove("hidden","low");
+    const tick=()=>{
+      const left=Math.max(0, Math.ceil((end-Date.now())/1000));
+      tEl.textContent=left+" s"; tEl.classList.toggle("low", left<=5);
+      if(left<=0){
+        clearInterval(timerInt);
+        const cur=game?.current;
+        if(cur && !cur.picked){ cur.picked=true; $("confirmBtn").disabled=true; $("confirmBtn").classList.add("hidden");
+          $("selHint").textContent="Zeit abgelaufen – warte auf die Auflösung …"; }
+      }
+    };
+    tick(); timerInt=setInterval(tick, 250);
+  } else tEl.classList.add("hidden");
+}
+function mpSubmit(i){
+  const r=game.current; if(r.picked) return;
+  r.picked = true; r.myPick = i;
+  $("confirmBtn").classList.add("hidden");
+  $("selHint").innerHTML = `Gewählt: <b style="color:var(--text)">${esc(r.options[i].name)}</b> – warte auf die anderen …`;
+  if(mp.role==="host"){ mp.picks.set("host", i); broadcastStatus(); checkAllAnswered(); }
+  else { try{ mp.conn.send({t:"pick", n:game.round, i}); }catch(e){} }
+}
+function mpApplyReveal(d){
+  clearInterval(timerInt); $("mpTimer").classList.add("hidden");
+  const r=game.current;
+  if(mp.role!=="host"){ d.streams.forEach((s,k)=>r.options[k].streams=s); r.ranked=[...r.options].sort((x,y)=>y.streams-x.streams); }
+  r.picked = true;
+  $("confirmBtn").classList.remove("hidden");
+  const me = d.results.find(x=>x.id===mp.myId) || {};
+  const who = {};
+  for(const x of d.results) if(x.pick!=null) (who[x.pick]=who[x.pick]||[]).push({name:x.name, me:x.id===mp.myId});
+  revealTiles(r, me.pick ?? undefined, who);
+  const v=$("verdict");
+  if(me.rank===1){ v.className="verdict good"; v.textContent=`Richtig! +${me.delta} Punkte`+(me.streak>1?` · ${me.streak}er-Streak 🔥`:""); }
+  else if(me.rank && me.rank<=3){ v.className="verdict mid"; v.textContent=`Knapp daneben: Platz ${me.rank}. +${me.delta} Punkte`; }
+  else if(me.rank){ v.className="verdict bad"; v.textContent=`Leider falsch, dein Song ist auf Platz ${me.rank}.`; }
+  else { v.className="verdict bad"; v.textContent="Keine Antwort abgegeben."; }
+  $("verdictSub").textContent = `Der größte Hit ist „${r.ranked[0].name}“ mit ${fmt(r.ranked[0].streams)} Streams auf Spotify.`;
+  const sorted=[...d.results].sort((a,b)=>b.score-a.score);
+  $("mpBoard").innerHTML = sorted.map((x,k)=>`<div class="brow ${x.id===mp.myId?"me":""}"><span class="pos">${k+1}.</span><span>${esc(x.name)}${x.rank?` <span class="hint" style="margin:0">· Platz ${x.rank}</span>`:` <span class="hint" style="margin:0">· keine Antwort</span>`}</span><span class="d ${x.delta?"plus":""}">${x.delta?"+"+x.delta:"±0"}</span><span class="pts">${x.score}</span></div>`).join("");
+  $("mpBoard").classList.remove("hidden");
+  $("result").classList.remove("hidden");
+  renderMpPlayers(d.results, []);
+  $("hScore").textContent = me.score ?? 0;
+  if(mp.role==="host"){ $("nextBtn").textContent = d.last ? "Endstand anzeigen →" : "Nächster Künstler →"; $("nextBtn").classList.remove("hidden"); }
+  else $("waitHost").classList.remove("hidden");
+}
+function mpShowEnd(d){
+  stopAudio(); clearInterval(timerInt);
+  show("end");
+  const pos = d.results.findIndex(x=>x.id===mp.myId)+1;
+  const me = d.results[pos-1] || {score:0};
+  $("endScore").textContent = me.score;
+  $("endSub").textContent = pos===1 ? `🏆 Du hast gewonnen! (${d.results.length} Spieler)` : `Platz ${pos} von ${d.results.length}`;
+  const medal=["🥇","🥈","🥉"];
+  $("endBoard").innerHTML = d.results.map((x,k)=>`<div class="brow ${x.id===mp.myId?"me":""}"><span class="pos">${medal[k]||(k+1)+"."}</span><span>${esc(x.name)}</span><span class="d"></span><span class="pts">${x.score}</span></div>`).join("");
+  $("endBoard").classList.remove("hidden"); $("summary").classList.add("hidden");
+  if(mp.role==="host"){ $("againBtn").textContent="Nochmal (gleicher Raum)"; $("againBtn").classList.remove("hidden"); $("settingsBtn").textContent="Raum schließen"; }
+  else { $("againBtn").classList.add("hidden"); $("settingsBtn").textContent="Raum verlassen"; $("endSub").textContent += " · Der Host kann eine neue Runde starten."; }
+}
+
+$("hostBtn").onclick=hostRoom;
+$("joinBtn").onclick=()=>joinRoom();
+$("joinCode").addEventListener("keydown", e=>{ if(e.key==="Enter") joinRoom(); });
+$("mpStartBtn").onclick=mpStart;
+$("lobbyLeave").onclick=mpLeave;
+$("lobbyLeave2").onclick=mpLeave;
+$("copyLink").onclick=async()=>{
+  try{ await navigator.clipboard.writeText(inviteLink(mp.code)); $("copyMsg").textContent="Kopiert ✓"; }
+  catch(e){ $("copyMsg").textContent="Kopieren nicht möglich – Link unten markieren und kopieren."; }
+};
+window.addEventListener("beforeunload", ()=>{ if(mp) try{ mpLeave(); }catch(e){} });
+
 $("startBtn").onclick=startGame;
-$("nextBtn").onclick=nextRound;
-$("quitBtn").onclick=()=>{ stopAudio(); if(game && game.history.length) { game.total=game.history.length; endGame(); } else { game=null; show("setup"); } };
-$("againBtn").onclick=startGame;
-$("settingsBtn").onclick=()=>{ renderSetup(); show("setup"); };
+$("nextBtn").onclick=()=>{ if(mp && mp.role==="host" && mp.started){ game.round>=game.total ? mpFinish() : mpNextRound(); } else nextRound(); };
+$("confirmBtn").onclick=()=>{ const r=game?.current; if(r && !r.picked && r.sel!=null) pick(r.sel); };
+$("quitBtn").onclick=()=>{ if(mp) return mpLeave(); stopAudio(); if(game && game.history.length) { game.total=game.history.length; endGame(); } else { game=null; show("setup"); } };
+$("againBtn").onclick=()=>{ if(mp && mp.role==="host") mpBackToLobby(); else startGame(); };
+$("settingsBtn").onclick=()=>{ if(mp) return mpLeave(); renderSetup(); show("setup"); };
 document.addEventListener("keydown",e=>{
   if($("round").classList.contains("hidden")) return;
   if(e.target.tagName==="INPUT") return;
   const n=parseInt(e.key,10);
-  if(n>=1 && n<=8 && !game?.current?.picked){ const b=$("options").children[n-1]?.querySelector("button.choose"); if(b) b.click(); }
+  if(n>=1 && n<=8 && !game?.current?.picked){ selectTile(n-1); return; }
   if(e.key===" " && playingBtn){ e.preventDefault(); stopAudio(); markBtn(playingBtn,false); }
-  if(e.key==="Enter" && !$("nextBtn").classList.contains("hidden")) $("nextBtn").click();
+  if(e.key==="Enter"){
+    if(!$("nextBtn").classList.contains("hidden")) { e.preventDefault(); $("nextBtn").click(); }
+    else if(game?.current && !game.current.picked && game.current.sel!=null){ e.preventDefault(); $("confirmBtn").click(); }
+  }
 });
 
+$("mpName").value = S.name || "";
+(function(){ const c=new URLSearchParams(location.search).get("raum");
+  if(c){ $("joinCode").value=c.toUpperCase().slice(0,5); setTimeout(()=>{ $("mpBox").scrollIntoView({behavior:"smooth",block:"center"}); $("mpName").focus(); },300);
+    $("joinBtn").classList.remove("ghost"); $("hostBtn").classList.add("ghost"); } })();
 initData();
 </script>
 </body>
