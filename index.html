@@ -89,14 +89,19 @@
   .confirm-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;flex-wrap:wrap}
   .confirm-row .hint{margin:0}
   /* Auflösung */
-  .tile.done{cursor:default;opacity:.75}
+  .tile.done{cursor:pointer;opacity:.75}
   .tile.done.correct,.tile.done.wrong{opacity:1}
   .tile.correct{border-color:var(--accent);box-shadow:0 0 0 3px rgba(30,215,96,.35)}
   .tile.wrong{border-color:var(--bad);box-shadow:0 0 0 3px rgba(255,77,109,.3)}
-  .tile .rk{position:absolute;left:8px;top:8px;min-width:34px;height:28px;padding:0 8px;border-radius:8px;background:rgba(0,0,0,.65);
-    font:700 14px "Space Grotesk";display:grid;place-items:center;backdrop-filter:blur(4px)}
-  .tile.correct .rk{background:var(--accent);color:#04120a}
-  .tile.wrong .rk{background:var(--bad);color:#fff}
+  .tile .rk{position:absolute;left:8px;top:8px;width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;
+    font:700 24px/1 "Space Grotesk";display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);
+    border:2px solid rgba(255,255,255,.25);box-shadow:0 4px 14px rgba(0,0,0,.45);z-index:2}
+  .tile .rk small{font-size:15px;margin-left:1px;opacity:.8}
+  .tile .rk.r1{background:linear-gradient(135deg,#ffe27a,#f5b70a);color:#2a1d00;border-color:#fff3b0}
+  .tile .rk.r2{background:linear-gradient(135deg,#f1f3f6,#aeb6c2);color:#1b2028;border-color:#fff}
+  .tile .rk.r3{background:linear-gradient(135deg,#f0b27a,#b8692b);color:#2a1200;border-color:#ffd2ad}
+  .tile.wrong .rk{box-shadow:0 0 0 3px var(--bad),0 4px 14px rgba(0,0,0,.45)}
+  .tile.done .who{top:60px}
   .tile .st{font:700 15px "Space Grotesk";color:#fff;margin-top:4px}
   .tile .st small{font:500 11px Inter;color:rgba(255,255,255,.7)}
   .tile .sbar{position:absolute;left:0;bottom:0;height:5px;width:0;background:rgba(255,255,255,.55);transition:width .9s cubic-bezier(.2,.8,.2,1);z-index:2}
@@ -250,7 +255,7 @@
         <div class="meta" id="artistMeta"></div>
       </div>
     </div>
-    <div class="q">Welcher dieser Songs hat die meisten Streams auf Spotify? Mit ▶ hörst du rein, Cover antippen zum Auswählen.</div>
+    <div class="q">Welcher dieser Songs hat die meisten Streams auf Spotify? Cover antippen spielt den Song ab und wählt ihn aus, nochmal antippen startet ihn neu.</div>
     <div class="mpbar hidden" id="mpBar"><div class="players" id="mpPlayers"></div><div class="timer hidden" id="mpTimer">30</div></div>
     <div class="grid" id="options"></div>
     <div class="confirm-row" id="confirmRow">
@@ -503,23 +508,39 @@ async function spotifyPlay(trackId){
   }
 }
 
-async function onPlay(btn, artist, song){
+// restart=true: immer (neu) von vorne abspielen statt stoppen (Klick aufs Cover)
+let playToken = 0;
+async function onPlay(btn, artist, song, restart){
+  const token = ++playToken;
   if(S.player==="spotify"){
-    if(playingBtn===btn){ stopAudio(); return; }
+    if(playingBtn===btn && !restart){ stopAudio(); return; }
     markBtn(playingBtn,false); playingBtn=btn; markBtn(btn,true);
     spotifyPlay(song.id);
     return;
   }
-  if(playingBtn===btn){ stopAudio(); return; }
+  if(playingBtn===btn){
+    if(!restart){ stopAudio(); return; }
+    audio.currentTime = 0;
+    try{ await audio.play(); }catch(e){}
+    return;
+  }
   stopAudio();
+  if(btn.disabled) return;                       // keine Hörprobe für diesen Song
   btn.classList.add("loading");
   const p = await findPreview(artist, song.name);
   btn.classList.remove("loading");
+  if(token!==playToken) return;                  // inzwischen wurde ein anderer Song angeklickt
   if(!p){ btn.disabled=true; btn.title="Keine Hörprobe gefunden"; btn.querySelector("span").textContent="–"; return; }
   if(playingBtn) stopAudio();
   audio.src = p.url;
   try{ await audio.play(); }catch(e){ return; }
+  if(token!==playToken){ audio.pause(); return; }
   playingBtn = btn; markBtn(btn,true);
+}
+function playTile(i, restart=true){
+  const r=game?.current; if(!r) return;
+  const o=[...$("options").children].find(x=>+x.dataset.i===i); if(!o) return;
+  onPlay(o.querySelector(".play"), r.artist, r.options[i], restart);
 }
 
 /* ---------- Runden bauen ---------- */
@@ -584,7 +605,7 @@ function renderRound(r){
   r.sel = null;
   $("confirmRow").classList.remove("hidden");
   $("confirmBtn").disabled = true; $("confirmBtn").classList.remove("hidden");
-  $("selHint").textContent = "Tippe auf ein Cover, um es auszuwählen.";
+  $("selHint").textContent = "Tippe auf ein Cover: Der Song spielt und ist ausgewählt.";
   r.options.forEach((t,i)=>{
     const o=document.createElement("div"); o.className="tile"; o.dataset.i=i; o.tabIndex=0;
     o.setAttribute("role","button"); o.setAttribute("aria-label", t.name);
@@ -606,7 +627,9 @@ function renderRound(r){
 }
 
 function selectTile(i){
-  const r=game?.current; if(!r || r.picked) return;
+  const r=game?.current; if(!r) return;
+  playTile(i);
+  if(r.picked) return;
   r.sel = i;
   [...$("options").children].forEach(o=>o.classList.toggle("sel", +o.dataset.i===i));
   $("options").classList.add("has-sel");
@@ -647,17 +670,17 @@ function revealTiles(r, i, who){
   [...$("options").children].forEach(o=>{
     const j=+o.dataset.i, t=r.options[j], tr=r.ranked.indexOf(t)+1;
     o.classList.remove("sel"); o.classList.add("done");
-    o.onclick=null; o.removeAttribute("tabindex");
+    o.onclick=()=>playTile(j); o.removeAttribute("tabindex");
     if(tr===1) o.classList.add("correct");
     if(j===i && tr!==1) o.classList.add("wrong");
-    o.querySelector(".num").outerHTML = `<div class="rk">#${tr}</div>`;
+    o.querySelector(".num").outerHTML = `<div class="rk r${tr}" title="Platz ${tr} von 8"><b>${tr}</b><small>.</small></div>`;
     o.querySelector(".t").innerHTML = `${esc(t.name)}<div class="st">${short(t.streams)} <small>Streams</small></div>`;
     o.querySelector(".t").title = fmt(t.streams)+" Streams";
     o.insertAdjacentHTML("beforeend", `<a class="sp" href="https://open.spotify.com/track/${t.id}" target="_blank" rel="noopener" title="Auf Spotify öffnen">Spotify ↗</a><div class="sbar"></div>`);
+    o.querySelector(".sp").onclick=e=>e.stopPropagation();
     if(who && who[j]?.length) o.insertAdjacentHTML("beforeend", `<div class="who">${who[j].map(n=>`<span class="${n.me?"me":""}">${esc(n.name)}</span>`).join("")}</div>`);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{ o.querySelector(".sbar").style.width=(t.streams/max*100)+"%"; }));
   });
-  const box=$("options"); [...box.children].sort((a,b)=> r.ranked.indexOf(r.options[a.dataset.i]) - r.ranked.indexOf(r.options[b.dataset.i])).forEach(n=>box.appendChild(n));
 
 }
 
@@ -1034,7 +1057,7 @@ document.addEventListener("keydown",e=>{
   if(e.target.tagName==="INPUT") return;
   const n=parseInt(e.key,10);
   if(n>=1 && n<=8 && !game?.current?.picked){ selectTile(n-1); return; }
-  if(e.key===" " && playingBtn){ e.preventDefault(); stopAudio(); markBtn(playingBtn,false); }
+  if(e.key===" " && playingBtn && !e.target.classList?.contains("tile")){ e.preventDefault(); stopAudio(); markBtn(playingBtn,false); }
   if(e.key==="Enter"){
     if(!$("nextBtn").classList.contains("hidden")) { e.preventDefault(); $("nextBtn").click(); }
     else if(game?.current && !game.current.picked && game.current.sel!=null){ e.preventDefault(); $("confirmBtn").click(); }
